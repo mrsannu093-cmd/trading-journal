@@ -1,0 +1,3162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Disciplined Trader Journal — Quotex Cloud Notebook</title>
+  <!-- Official Supabase JavaScript Client v2 via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg-paper: #fdfaf3;
+      --bg-card: #ffffff;
+      --bg-muted: #f4efe4;
+      --line-rule: #e4dccb;
+      --margin-red: #d96b6b;
+      --ink-primary: #1c2430;
+      --ink-secondary: #526071;
+      --ink-muted: #7b8794;
+      --accent-primary: #1d4ed8;
+      --accent-hover: #1e40af;
+      --win-bg: #dcfce7;
+      --win-text: #166534;
+      --win-border: #86efac;
+      --loss-bg: #fee2e2;
+      --loss-text: #991b1b;
+      --loss-border: #fca5a5;
+      --draw-bg: #e0f2fe;
+      --draw-text: #075985;
+      --draw-border: #7dd3fc;
+      --pending-bg: #fef9c3;
+      --pending-text: #854d0e;
+      --pending-border: #fde047;
+      --call-color: #15803d;
+      --put-color: #b91c1c;
+      --radius: 8px;
+      --shadow: 0 2px 8px rgba(28, 36, 48, 0.07);
+      --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background-color: var(--bg-paper);
+      background-image: linear-gradient(to bottom, transparent 31px, var(--line-rule) 32px);
+      background-size: 100% 32px;
+      color: var(--ink-primary);
+      line-height: 1.5;
+      min-height: 100vh;
+      padding-bottom: 4rem;
+    }
+
+    /* Top Header & Affirmation */
+    .app-header {
+      background: #1c2430;
+      color: #ffffff;
+      padding: 0.75rem 1rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+    }
+
+    .header-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+
+    .brand-block {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .brand-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .affirmation-subtitle {
+      font-size: 0.82rem;
+      color: #cbd5e1;
+      font-style: italic;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .sync-pill {
+      font-size: 0.75rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+      background: #334155;
+      color: #e2e8f0;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .sync-pill.online { background: #14532d; color: #bbf7d0; }
+    .sync-pill.saving { background: #713f12; color: #fef08a; }
+    .sync-pill.error { background: #7f1d1d; color: #fecaca; }
+
+    /* Main Container */
+    .container {
+      max-width: 1200px;
+      margin: 1rem auto;
+      padding: 0 1rem;
+    }
+
+    /* Status / Alert Banners */
+    .status-banner {
+      padding: 0.85rem 1rem;
+      border-radius: var(--radius);
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+      box-shadow: var(--shadow);
+    }
+    .status-banner.hidden { display: none !important; }
+    .status-banner.info { background: #eff6ff; color: #1e3a8a; border: 1px solid #bfdbfe; }
+    .status-banner.success { background: #f0fdf4; color: #14532d; border: 1px solid #bbf7d0; }
+    .status-banner.warning { background: #fefce8; color: #713f12; border: 1px solid #fef08a; }
+    .status-banner.error { background: #fef2f2; color: #7f1d1d; border: 1px solid #fecaca; }
+
+    /* Navigation Tabs */
+    .nav-tabs {
+      display: flex;
+      gap: 0.4rem;
+      overflow-x: auto;
+      padding-bottom: 0.5rem;
+      margin-bottom: 1rem;
+      border-bottom: 2px solid var(--line-rule);
+    }
+
+    .nav-tab {
+      appearance: none;
+      border: 1px solid var(--line-rule);
+      background: var(--bg-muted);
+      color: var(--ink-secondary);
+      padding: 0.65rem 1rem;
+      border-radius: var(--radius) var(--radius) 0 0;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      white-space: nowrap;
+      min-height: 44px;
+      transition: all 0.15s ease;
+    }
+
+    .nav-tab.active {
+      background: var(--bg-card);
+      color: var(--accent-primary);
+      border-bottom-color: var(--bg-card);
+      box-shadow: 0 -2px 0 var(--accent-primary) inset;
+    }
+
+    /* Cards & Notebook Sheet Styling */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--line-rule);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      margin-bottom: 1.25rem;
+      box-shadow: var(--shadow);
+    }
+
+    .notebook-sheet {
+      background: #fffdf8;
+      border: 1px solid #dcd2be;
+      border-left: 4px solid var(--margin-red);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      margin-bottom: 1.25rem;
+      box-shadow: var(--shadow);
+    }
+
+    .notebook-header-bar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: baseline;
+      border-bottom: 2px double var(--margin-red);
+      padding-bottom: 0.65rem;
+      margin-bottom: 1rem;
+      gap: 0.5rem;
+    }
+
+    .notebook-affirmation {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #991b1b;
+      letter-spacing: 0.02em;
+      font-style: italic;
+    }
+
+    /* Typography & Layout Helpers */
+    h1, h2, h3, h4 { color: var(--ink-primary); }
+    .section-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 0.85rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; }
+    .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1rem; }
+    .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0.85rem; }
+
+    /* Stat Boxes */
+    .stat-box {
+      background: #ffffff;
+      border: 1px solid var(--line-rule);
+      border-radius: var(--radius);
+      padding: 0.9rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+    .stat-label {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--ink-secondary);
+      font-weight: 600;
+    }
+    .stat-value {
+      font-size: 1.35rem;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      color: var(--ink-primary);
+    }
+    .stat-sub {
+      font-size: 0.76rem;
+      color: var(--ink-muted);
+    }
+
+    /* Forms & Touch Controls */
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 0.9rem;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .form-group.full-width {
+      grid-column: 1 / -1;
+    }
+
+    label {
+      font-size: 0.84rem;
+      font-weight: 600;
+      color: var(--ink-primary);
+    }
+
+    label .req { color: #dc2626; }
+    label .opt { color: var(--ink-muted); font-weight: 400; font-size: 0.76rem; }
+
+    input, select, textarea {
+      width: 100%;
+      min-height: 44px;
+      padding: 0.55rem 0.75rem;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      background: #ffffff;
+      color: var(--ink-primary);
+      font-size: 0.95rem;
+      font-family: inherit;
+    }
+
+    textarea {
+      min-height: 76px;
+      resize: vertical;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: 2px solid var(--accent-primary);
+      border-color: var(--accent-primary);
+    }
+
+    input:disabled, select:disabled, textarea:disabled {
+      background: #f1f5f9;
+      color: #64748b;
+      cursor: not-allowed;
+    }
+
+    .field-hint {
+      font-size: 0.75rem;
+      color: var(--ink-muted);
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      min-height: 44px;
+      padding: 0.55rem 1rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: background 0.15s ease, opacity 0.15s ease;
+      text-decoration: none;
+    }
+    .btn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+    .btn-sm {
+      min-height: 36px;
+      padding: 0.35rem 0.7rem;
+      font-size: 0.8rem;
+    }
+    .btn-primary { background: var(--accent-primary); color: #ffffff; }
+    .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+    .btn-secondary { background: #ffffff; color: var(--ink-primary); border-color: #cbd5e1; }
+    .btn-secondary:hover:not(:disabled) { background: #f8fafc; }
+    .btn-success { background: #15803d; color: #ffffff; }
+    .btn-warning { background: #b45309; color: #ffffff; }
+    .btn-danger { background: #b91c1c; color: #ffffff; }
+
+    /* Badges */
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.55rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .badge-win { background: var(--win-bg); color: var(--win-text); border: 1px solid var(--win-border); }
+    .badge-loss { background: var(--loss-bg); color: var(--loss-text); border: 1px solid var(--loss-border); }
+    .badge-draw { background: var(--draw-bg); color: var(--draw-text); border: 1px solid var(--draw-border); }
+    .badge-pending { background: var(--pending-bg); color: var(--pending-text); border: 1px solid var(--pending-border); }
+    .badge-call { background: #ecfdf5; color: var(--call-color); border: 1px solid #6ee7b7; }
+    .badge-put { background: #fef2f2; color: var(--put-color); border: 1px solid #fca5a5; }
+    .badge-open { background: #dcfce7; color: #166534; }
+    .badge-closed { background: #e2e8f0; color: #334155; }
+
+    /* Notebook Table */
+    .table-responsive {
+      width: 100%;
+      overflow-x: auto;
+      border: 1px solid var(--line-rule);
+      border-radius: var(--radius);
+    }
+
+    table.notebook-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fffdf8;
+      font-size: 0.88rem;
+    }
+
+    .notebook-table th,
+    .notebook-table td {
+      padding: 0.65rem 0.75rem;
+      border-bottom: 1px solid var(--line-rule);
+      border-right: 1px solid #efe8d8;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .notebook-table th {
+      background: var(--bg-muted);
+      font-weight: 700;
+      color: var(--ink-primary);
+      white-space: nowrap;
+    }
+
+    .notebook-table tr:hover td {
+      background: #faf5e8;
+    }
+
+    .mono { font-family: var(--font-mono); }
+    .pnl-pos { color: var(--win-text); font-weight: 700; }
+    .pnl-neg { color: var(--loss-text); font-weight: 700; }
+    .pnl-unrec { color: #b45309; font-style: italic; font-size: 0.82rem; }
+
+    /* Auth Wrapper */
+    .auth-wrapper {
+      max-width: 460px;
+      margin: 2.5rem auto;
+    }
+
+    .hidden { display: none !important; }
+
+    .empty-state {
+      text-align: center;
+      padding: 2.25rem 1rem;
+      color: var(--ink-secondary);
+      border: 1px dashed var(--line-rule);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.6);
+    }
+
+    /* Collapsible Optional Fields */
+    details.optional-panel {
+      grid-column: 1 / -1;
+      border: 1px solid var(--line-rule);
+      border-radius: 6px;
+      padding: 0.75rem;
+      background: #faf8f2;
+    }
+
+    details.optional-panel summary {
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.88rem;
+      color: var(--accent-primary);
+      padding: 0.25rem 0;
+    }
+
+    /* Modal Dialog */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.65);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      z-index: 200;
+    }
+
+    .modal-card {
+      background: var(--bg-card);
+      border-radius: var(--radius);
+      max-width: 680px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 1.25rem;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 640px) {
+      .card, .notebook-sheet { padding: 0.95rem; }
+      .stat-value { font-size: 1.15rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Bar -->
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="brand-block">
+        <div class="brand-title">
+          <span>📓 Quotex Trading Journal</span>
+        </div>
+        <div class="affirmation-subtitle" id="headerAffirmation">"Me ek disciplined trader hoo."</div>
+      </div>
+      <div class="header-actions">
+        <span id="syncStatusPill" class="sync-pill">Checking Auth...</span>
+        <span id="userEmailBadge" class="sync-pill hidden"></span>
+        <button id="btnRefreshCloud" class="btn btn-sm btn-secondary hidden" type="button" title="Sync from Supabase">↻ Sync</button>
+        <button id="btnLogout" class="btn btn-sm btn-danger hidden" type="button">Logout</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Global Notification Banner -->
+    <div id="globalBanner" class="status-banner hidden" role="status" aria-live="polite">
+      <span id="globalBannerText"></span>
+      <button type="button" class="btn btn-sm btn-secondary" onclick="hideBanner()">Dismiss</button>
+    </div>
+
+    <!-- ================================================================== -->
+    <!-- 1. SESSION LOADING STATE                                           -->
+    <!-- ================================================================== -->
+    <section id="loadingView" class="card" style="text-align:center; padding: 3rem 1rem;">
+      <h2>Connecting to Supabase Cloud...</h2>
+      <p style="color: var(--ink-secondary); margin-top: 0.5rem;">Verifying authentication session before loading private journal records.</p>
+    </section>
+
+    <!-- ================================================================== -->
+    <!-- 2. SUPABASE CREDENTIALS CONFIGURATION FALLBACK                     -->
+    <!-- ================================================================== -->
+    <section id="configWarningView" class="card hidden">
+      <h2 class="section-title">⚙️ Configure Your Supabase Project Connection</h2>
+      <p style="margin-bottom: 0.85rem; color: var(--ink-secondary); font-size: 0.92rem;">
+        To connect this journal to your private Supabase PostgreSQL database, edit <code>SUPABASE_URL</code> and <code>SUPABASE_ANON_KEY</code> at the top of the <code>&lt;script&gt;</code> inside <code>index.html</code>, or enter your public project URL and publishable/anon key below for this browser.
+      </p>
+      <div class="status-banner warning">
+        <span><strong>Security Rule:</strong> Use ONLY your public Project URL and Publishable / Anon Key. NEVER paste a <code>service_role</code> or secret key in the browser.</span>
+      </div>
+      <form id="configForm" class="form-grid">
+        <div class="form-group full-width">
+          <label for="cfgUrl">Supabase Project URL <span class="req">*</span></label>
+          <input type="url" id="cfgUrl" placeholder="https://xyzcompany.supabase.co" required />
+        </div>
+        <div class="form-group full-width">
+          <label for="cfgKey">Supabase Publishable / Anon Key <span class="req">*</span></label>
+          <input type="text" id="cfgKey" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9... or sb_publishable_..." required />
+        </div>
+        <div class="form-group full-width">
+          <button type="submit" class="btn btn-primary">Save & Connect to Supabase</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- ================================================================== -->
+    <!-- 3. AUTHENTICATION VIEW (LOGIN / SIGN UP / PASSWORD RECOVERY)       -->
+    <!-- ================================================================== -->
+    <section id="authView" class="auth-wrapper hidden">
+      <div class="notebook-sheet">
+        <div class="notebook-header-bar">
+          <h2>Trader Authentication</h2>
+          <span class="notebook-affirmation">"Me ek disciplined trader hoo."</span>
+        </div>
+
+        <!-- Auth Mode Switcher -->
+        <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
+          <button type="button" id="tabAuthLogin" class="btn btn-sm btn-primary" onclick="switchAuthMode('login')">Login</button>
+          <button type="button" id="tabAuthSignup" class="btn btn-sm btn-secondary" onclick="switchAuthMode('signup')">Sign Up</button>
+          <button type="button" id="tabAuthReset" class="btn btn-sm btn-secondary" onclick="switchAuthMode('reset')">Forgot Password</button>
+        </div>
+
+        <!-- Login / Signup Form -->
+        <form id="authForm" class="form-grid">
+          <div class="form-group full-width">
+            <label for="authEmail">Email Address <span class="req">*</span></label>
+            <input type="email" id="authEmail" autocomplete="email" required placeholder="trader@example.com" />
+          </div>
+          <div class="form-group full-width" id="authPasswordGroup">
+            <label for="authPassword">Password <span class="req">*</span></label>
+            <input type="password" id="authPassword" autocomplete="current-password" minlength="6" placeholder="Minimum 6 characters" />
+          </div>
+          <div class="form-group full-width">
+            <button type="submit" id="authSubmitBtn" class="btn btn-primary" style="width:100%;">Login to Journal</button>
+          </div>
+        </form>
+
+        <!-- Update Password Form (shown when arriving from Password Recovery Link) -->
+        <form id="newPasswordForm" class="form-grid hidden" style="margin-top:1rem; border-top:1px solid var(--line-rule); padding-top:1rem;">
+          <div class="form-group full-width">
+            <h3>Set Your New Password</h3>
+            <p class="field-hint">Password recovery verified. Enter your new password below.</p>
+          </div>
+          <div class="form-group full-width">
+            <label for="newPasswordInput">New Password <span class="req">*</span></label>
+            <input type="password" id="newPasswordInput" minlength="6" required placeholder="Enter new strong password" />
+          </div>
+          <div class="form-group full-width">
+            <button type="submit" id="newPasswordBtn" class="btn btn-success" style="width:100%;">Update Password</button>
+          </div>
+        </form>
+
+        <div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--line-rule); display:flex; justify-content:space-between; align-items:center;">
+          <span class="field-hint">Cloud Synced via Supabase Auth</span>
+          <button type="button" class="btn btn-sm btn-secondary" onclick="showConfigModal()">Connection Settings</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================================================================== -->
+    <!-- 4. AUTHENTICATED APPLICATION SHELL                                 -->
+    <!-- ================================================================== -->
+    <section id="appView" class="hidden">
+
+      <!-- Global Session Context Bar -->
+      <div class="card" style="padding: 0.85rem 1rem; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:0.75rem;">
+        <div style="display:flex; align-items:center; gap:0.65rem; flex-wrap:wrap;">
+          <label for="sessionSelector" style="margin:0; font-weight:700;">Active Notebook Session:</label>
+          <select id="sessionSelector" style="width:auto; min-width:220px;"></select>
+          <span id="activeSessionStatusBadge" class="badge badge-open">OPEN</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+          <button type="button" class="btn btn-sm btn-primary" onclick="openNewSessionModal()">+ New Daily Session</button>
+          <label for="currencySelector" style="font-size:0.8rem; margin-left:0.4rem;">Currency:</label>
+          <select id="currencySelector" style="width:auto; min-height:36px; padding:0.25rem 0.5rem; font-size:0.85rem;">
+            <option value="INR">INR (₹)</option>
+            <option value="USD">USD ($)</option>
+            <option value="EUR">EUR (€)</option>
+            <option value="GBP">GBP (£)</option>
+            <option value="BRL">BRL (R$)</option>
+            <option value="BDT">BDT (৳)</option>
+            <option value="PKR">PKR (₨)</option>
+            <option value="IDR">IDR (Rp)</option>
+            <option value="VND">VND (₫)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Main Navigation Tabs -->
+      <nav class="nav-tabs" aria-label="Journal Sections">
+        <button type="button" class="nav-tab active" data-tab="dashboard" onclick="switchTab('dashboard')">A. Dashboard</button>
+        <button type="button" class="nav-tab" data-tab="journal" onclick="switchTab('journal')">B. Daily Journal</button>
+        <button type="button" class="nav-tab" data-tab="history" onclick="switchTab('history')">C. Trade History</button>
+        <button type="button" class="nav-tab" data-tab="review" onclick="switchTab('review')">D. Performance Review</button>
+        <button type="button" class="nav-tab" data-tab="backup" onclick="switchTab('backup')">E. Backup & Export</button>
+      </nav>
+
+      <!-- ================================================================ -->
+      <!-- VIEW A: DASHBOARD                                                -->
+      <!-- ================================================================ -->
+      <div id="tab-dashboard" class="tab-panel">
+        <div class="notebook-sheet">
+          <div class="notebook-header-bar">
+            <div>
+              <h2 id="dashSessionTitle">Selected Session Overview</h2>
+              <p class="field-hint" id="dashSessionMeta">Select or create a daily trading session to track metrics.</p>
+            </div>
+            <div class="notebook-affirmation" id="dashAffirmation">"Me ek disciplined trader hoo."</div>
+          </div>
+
+          <div id="dashIncompleteWarning" class="status-banner warning hidden">
+            <span id="dashIncompleteText"></span>
+          </div>
+
+          <div class="grid-4">
+            <div class="stat-box">
+              <span class="stat-label">Starting Balance</span>
+              <span class="stat-value" id="statStartBal">—</span>
+              <span class="stat-sub" id="statSessionTime">Start Time: —</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-label">Recorded Ending Balance</span>
+              <span class="stat-value" id="statEndBal">—</span>
+              <span class="stat-sub" id="statEndBalStatus">No session selected</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-label">Recorded Net P&amp;L</span>
+              <span class="stat-value" id="statNetPnl">—</span>
+              <span class="stat-sub" id="statTotalStaked">Total Staked: —</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-label">Win Rate (Completed)</span>
+              <span class="stat-value" id="statWinRate">—</span>
+              <span class="stat-sub" id="statWinLossBreakdown">0W / 0L / 0D / 0P</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-label">Total Trades in Session</span>
+              <span class="stat-value" id="statTotalTrades">0</span>
+              <span class="stat-sub" id="statUnrecordedCount">0 unrecorded P&amp;L</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-label">Completed Wins / Losses</span>
+              <span class="stat-value" id="statWinsLosses">0 / 0</span>
+              <span class="stat-sub" id="statDrawsPending">Draws: 0 | Pending: 0</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-label">Rule-Following %</span>
+              <span class="stat-value" id="statRulePct">—</span>
+              <span class="stat-sub" id="statRuleSub">Based on recorded answers</span>
+            </div>
+            <div class="stat-box">
+              <span class="stat-label">Quick Action</span>
+              <div style="display:flex; gap:0.4rem; margin-top:0.2rem; flex-wrap:wrap;">
+                <button type="button" class="btn btn-sm btn-primary" onclick="switchTab('journal')">Open Daily Sheet →</button>
+              </div>
+              <span class="stat-sub">Log trades &amp; mindset</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================================================================ -->
+      <!-- VIEW B: DAILY JOURNAL (NOTEBOOK LAYOUT)                          -->
+      <!-- ================================================================ -->
+      <div id="tab-journal" class="tab-panel hidden">
+
+        <!-- Empty Session State -->
+        <div id="journalNoSessionState" class="card empty-state hidden">
+          <h3>No Trading Session Selected</h3>
+          <p style="margin: 0.5rem 0 1rem;">Start your trading day by creating a daily notebook session with your Date, Starting Balance, and Session Start Time.</p>
+          <button type="button" class="btn btn-primary" onclick="openNewSessionModal()">+ Create Today's Trading Session</button>
+        </div>
+
+        <div id="journalActiveContent">
+          <!-- Notebook Page Header (Reference Fields 1, 2, 3 + Affirmation) -->
+          <div class="notebook-sheet">
+            <div class="notebook-header-bar">
+              <div>
+                <h2 id="journalSheetHeading">Daily Notebook Page</h2>
+                <span class="field-hint" id="journalTimestamps">Created: — | Updated: —</span>
+              </div>
+              <span class="notebook-affirmation" id="journalAffirmation">"Me ek disciplined trader hoo."</span>
+            </div>
+
+            <form id="sessionEditForm" class="form-grid">
+              <div class="form-group">
+                <label for="sessDate">1. Date <span class="req">*</span></label>
+                <input type="date" id="sessDate" required />
+              </div>
+              <div class="form-group">
+                <label for="sessStartBalance">2. Starting Balance (<span class="curr-code">INR</span>) <span class="req">*</span></label>
+                <input type="number" id="sessStartBalance" step="0.01" min="0" required />
+              </div>
+              <div class="form-group">
+                <label for="sessStartTime">3. Session Start Time <span class="req">*</span></label>
+                <input type="time" id="sessStartTime" required />
+              </div>
+              <div class="form-group">
+                <label for="sessEndTime">Session End Time <span class="opt">(optional)</span></label>
+                <input type="time" id="sessEndTime" />
+              </div>
+              <div class="form-group">
+                <label for="sessOpeningNotes">Opening Notes / Plan <span class="opt">(optional)</span></label>
+                <input type="text" id="sessOpeningNotes" maxlength="2000" placeholder="Max daily loss limit, target trades, market condition..." />
+              </div>
+              <div class="form-group">
+                <label for="sessClosingNotes">Closing Review Notes <span class="opt">(optional)</span></label>
+                <input type="text" id="sessClosingNotes" maxlength="2000" placeholder="End-of-session discipline reflection..." />
+              </div>
+              <div class="form-group full-width" style="display:flex; flex-direction:row; flex-wrap:wrap; gap:0.5rem; align-items:center; justify-content:space-between; padding-top:0.4rem;">
+                <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                  <button type="submit" id="btnSaveSession" class="btn btn-sm btn-primary">Save Session Details</button>
+                  <button type="button" id="btnCloseSession" class="btn btn-sm btn-warning" onclick="toggleSessionLock('CLOSED')">Close &amp; Lock Session</button>
+                  <button type="button" id="btnReopenSession" class="btn btn-sm btn-success hidden" onclick="toggleSessionLock('OPEN')">🔓 Unlock / Reopen Session to Edit</button>
+                </div>
+                <button type="button" id="btnDeleteSession" class="btn btn-sm btn-danger" onclick="deleteCurrentSession()">Delete Session</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Closed Session Notice Banner -->
+          <div id="closedSessionBanner" class="status-banner warning hidden">
+            <span>🔒 <strong>This session is CLOSED.</strong> Its financial results are locked against accidental edits. Click <strong>"Unlock / Reopen Session to Edit"</strong> above if you need to add or modify trades.</span>
+          </div>
+
+          <!-- Trade Entry Form (Reference Fields 4 to 11 + Optionals) -->
+          <div class="card" id="tradeEntryCard">
+            <div class="section-title">
+              <span id="tradeFormTitle">✍️ Record Trade in Current Session</span>
+              <span class="badge badge-open" id="nextTnPreview">Next T.N.: T1</span>
+            </div>
+
+            <form id="tradeForm" class="form-grid">
+              <input type="hidden" id="tradeEditId" value="" />
+
+              <!-- 4. T.N. -->
+              <div class="form-group">
+                <label for="trSeq">4. T.N. (Trade Number) <span class="req">*</span></label>
+                <input type="text" id="trSeqDisplay" readonly value="T1" style="background:#f8fafc; font-weight:700; font-family:var(--font-mono);" />
+              </div>
+
+              <!-- 5. Asset -->
+              <div class="form-group">
+                <label for="trAsset">5. Asset <span class="req">*</span></label>
+                <input type="text" id="trAsset" list="quotexAssets" required maxlength="80" placeholder="e.g., USD/BRL (OTC)" />
+                <datalist id="quotexAssets">
+                  <option value="USD/BRL (OTC)"></option>
+                  <option value="USD/INR (OTC)"></option>
+                  <option value="USD/BDT (OTC)"></option>
+                  <option value="USD/PKR (OTC)"></option>
+                  <option value="EUR/USD (OTC)"></option>
+                  <option value="GBP/USD (OTC)"></option>
+                  <option value="USD/JPY (OTC)"></option>
+                  <option value="AUD/CAD (OTC)"></option>
+                  <option value="EUR/JPY"></option>
+                  <option value="EUR/USD"></option>
+                  <option value="GBP/USD"></option>
+                </datalist>
+              </div>
+
+              <!-- 6. Setup -->
+              <div class="form-group">
+                <label for="trSetup">6. Setup <span class="req">*</span></label>
+                <select id="trSetup" required>
+                  <option value="V-Pattern">V-Pattern</option>
+                  <option value="Wick Fill-up">Wick Fill-up</option>
+                  <option value="Support Rejection">Support Rejection</option>
+                  <option value="Breakout">Breakout</option>
+                  <option value="Pullback">Pullback</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+
+              <!-- 7. Direction -->
+              <div class="form-group">
+                <label for="trDirection">7. Direction <span class="req">*</span></label>
+                <select id="trDirection" required>
+                  <option value="CALL">CALL (▲ Up)</option>
+                  <option value="PUT">PUT (▼ Down)</option>
+                </select>
+              </div>
+
+              <!-- 8. Amount -->
+              <div class="form-group">
+                <label for="trAmount">8. Stake Amount (<span class="curr-code">INR</span>) <span class="req">*</span></label>
+                <input type="number" id="trAmount" step="0.01" min="0.01" required placeholder="e.g., 100.00" oninput="handlePnlHelperUpdate()" />
+              </div>
+
+              <!-- 9. Result -->
+              <div class="form-group">
+                <label for="trResult">9. Result <span class="req">*</span></label>
+                <select id="trResult" required onchange="handleResultChange()">
+                  <option value="WIN">WIN</option>
+                  <option value="LOSS">LOSS</option>
+                  <option value="DRAW">DRAW</option>
+                  <option value="PENDING">PENDING</option>
+                </select>
+              </div>
+
+              <!-- 10. Reason -->
+              <div class="form-group">
+                <label for="trReason">10. Reason &amp; Confirmation <span class="req">*</span></label>
+                <input type="text" id="trReason" required maxlength="1000" placeholder="Why taken? e.g., Strong rejection wick at SNR level" />
+              </div>
+
+              <!-- 11. Mindset -->
+              <div class="form-group">
+                <label for="trMindsetSelect">11. Mindset <span class="req">*</span></label>
+                <select id="trMindsetSelect" required onchange="handleMindsetSelectChange()">
+                  <option value="Calm">Calm</option>
+                  <option value="Confident">Confident</option>
+                  <option value="Fearful">Fearful</option>
+                  <option value="Greedy">Greedy</option>
+                  <option value="Impatient">Impatient</option>
+                  <option value="Revenge Trading">Revenge Trading</option>
+                  <option value="CUSTOM">Custom Mindset...</option>
+                </select>
+              </div>
+
+              <div class="form-group hidden" id="trCustomMindsetGroup">
+                <label for="trMindsetCustom">Custom Mindset Text <span class="req">*</span></label>
+                <input type="text" id="trMindsetCustom" maxlength="120" placeholder="Describe your exact emotional state" />
+              </div>
+
+              <!-- Optional Fields Panel (including Actual Profit/Loss so financial metrics are accurate) -->
+              <details class="optional-panel" open>
+                <summary>Optional Trade Details &amp; Recorded Financial Result (Net P&amp;L, Payout %, Rules, Mistakes)</summary>
+                <div class="form-grid" style="margin-top:0.75rem;">
+                  <div class="form-group">
+                    <label for="trPayoutPct">Payout % <span class="opt">(optional)</span></label>
+                    <input type="number" id="trPayoutPct" step="0.01" min="0" max="1000" placeholder="e.g., 85" oninput="handlePnlHelperUpdate()" />
+                  </div>
+
+                  <div class="form-group">
+                    <label for="trActualPnl">Actual Net Profit / Loss (<span class="curr-code">INR</span>) <span class="opt">(optional)</span></label>
+                    <div style="display:flex; gap:0.35rem;">
+                      <input type="number" id="trActualPnl" step="0.01" placeholder="Leave blank if unrecorded" />
+                      <button type="button" id="btnAutoCalcPnl" class="btn btn-sm btn-secondary" onclick="applyCalculatedPnl()" title="Fill net P&L from Stake & Payout %">Calc</button>
+                    </div>
+                    <span class="field-hint" id="pnlHelperHint">Binary rule: WIN net profit excludes stake (e.g. ₹85 on ₹100 stake). LOSS is negative (e.g. -100).</span>
+                  </div>
+
+                  <div class="form-group hidden" id="drawConfirmGroup">
+                    <label for="trDrawConfirm" style="display:flex; align-items:center; gap:0.5rem; margin-top:1.4rem; cursor:pointer;">
+                      <input type="checkbox" id="trDrawConfirm" style="width:20px; min-height:20px;" />
+                      <span>Confirm stake was returned (Net P&amp;L = 0)</span>
+                    </label>
+                    <span class="field-hint">Required for DRAW if Actual Net P&amp;L is left blank.</span>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="trFollowedRules">Followed Trading Rules? <span class="opt">(optional)</span></label>
+                    <select id="trFollowedRules">
+                      <option value="">Not recorded</option>
+                      <option value="true">Yes — Followed Rules</option>
+                      <option value="false">No — Broke Rules</option>
+                    </select>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="trEntryTime">Entry Time <span class="opt">(optional)</span></label>
+                    <input type="time" id="trEntryTime" />
+                  </div>
+
+                  <div class="form-group">
+                    <label for="trExpiry">Expiry Duration <span class="opt">(optional)</span></label>
+                    <input type="text" id="trExpiry" maxlength="40" placeholder="e.g., 1m, 5m, 30s" />
+                  </div>
+
+                  <div class="form-group">
+                    <label for="trMistake">Mistake Made <span class="opt">(optional)</span></label>
+                    <input type="text" id="trMistake" maxlength="500" placeholder="e.g., Late entry, Chased big candle, None" />
+                  </div>
+
+                  <div class="form-group">
+                    <label for="trChartNotes">Screenshot / Chart Notes <span class="opt">(optional)</span></label>
+                    <input type="text" id="trChartNotes" maxlength="1000" placeholder="Chart observation or image URL..." />
+                  </div>
+                </div>
+              </details>
+
+              <div class="form-group full-width" style="display:flex; flex-direction:row; gap:0.6rem; flex-wrap:wrap; margin-top:0.25rem;">
+                <button type="submit" id="btnSubmitTrade" class="btn btn-primary">Save Trade to Cloud</button>
+                <button type="button" id="btnCancelEditTrade" class="btn btn-secondary hidden" onclick="resetTradeForm()">Cancel Edit</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Notebook Trade Sheet List -->
+          <div class="notebook-sheet">
+            <div class="section-title">
+              <span>📖 Daily Notebook Trade Log</span>
+              <span class="field-hint" id="sessionTradeCountLabel">0 trades recorded</span>
+            </div>
+
+            <div id="sessionTradesEmpty" class="empty-state">
+              <p>No trades logged in this session yet. Use the form above to record <strong>T1</strong>.</p>
+            </div>
+
+            <div id="sessionTradesTableWrap" class="table-responsive hidden">
+              <table class="notebook-table">
+                <thead>
+                  <tr>
+                    <th>T.N.</th>
+                    <th>Asset</th>
+                    <th>Setup</th>
+                    <th>Dir</th>
+                    <th>Amount</th>
+                    <th>Result</th>
+                    <th>Net P&amp;L</th>
+                    <th>Reason &amp; Confirmation</th>
+                    <th>Mindset</th>
+                    <th>Rules / Details</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="sessionTradesTbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================================================================ -->
+      <!-- VIEW C: TRADE HISTORY (SEARCH, FILTER, SORT)                     -->
+      <!-- ================================================================ -->
+      <div id="tab-history" class="tab-panel hidden">
+        <div class="card">
+          <div class="section-title">
+            <span>🔍 Filter &amp; Search All Trades</span>
+            <button type="button" class="btn btn-sm btn-secondary" onclick="resetHistoryFilters()">Reset Filters</button>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="fltAsset">Search Asset</label>
+              <input type="text" id="fltAsset" placeholder="e.g., USD/BRL" oninput="renderHistoryView()" />
+            </div>
+            <div class="form-group">
+              <label for="fltDateFrom">From Date</label>
+              <input type="date" id="fltDateFrom" onchange="renderHistoryView()" />
+            </div>
+            <div class="form-group">
+              <label for="fltDateTo">To Date</label>
+              <input type="date" id="fltDateTo" onchange="renderHistoryView()" />
+            </div>
+            <div class="form-group">
+              <label for="fltSetup">Setup</label>
+              <select id="fltSetup" onchange="renderHistoryView()">
+                <option value="ALL">All Setups</option>
+                <option value="V-Pattern">V-Pattern</option>
+                <option value="Wick Fill-up">Wick Fill-up</option>
+                <option value="Support Rejection">Support Rejection</option>
+                <option value="Breakout">Breakout</option>
+                <option value="Pullback">Pullback</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="fltDirection">Direction</label>
+              <select id="fltDirection" onchange="renderHistoryView()">
+                <option value="ALL">CALL &amp; PUT</option>
+                <option value="CALL">CALL</option>
+                <option value="PUT">PUT</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="fltResult">Result</label>
+              <select id="fltResult" onchange="renderHistoryView()">
+                <option value="ALL">All Results</option>
+                <option value="WIN">WIN</option>
+                <option value="LOSS">LOSS</option>
+                <option value="DRAW">DRAW</option>
+                <option value="PENDING">PENDING</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="fltMindset">Mindset</label>
+              <input type="text" id="fltMindset" placeholder="e.g., Calm, Greedy..." oninput="renderHistoryView()" />
+            </div>
+            <div class="form-group">
+              <label for="fltSort">Sort Order</label>
+              <select id="fltSort" onchange="renderHistoryView()">
+                <option value="NEWEST">Newest First</option>
+                <option value="OLDEST">Oldest First</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="notebook-sheet">
+          <div class="section-title">
+            <span>Matched Trade Records</span>
+            <span class="field-hint" id="historySummaryCount">0 trades matched</span>
+          </div>
+
+          <div id="historyEmptyState" class="empty-state hidden">
+            <p>No trades match the selected filters.</p>
+          </div>
+
+          <div id="historyTableWrap" class="table-responsive">
+            <table class="notebook-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>T.N.</th>
+                  <th>Asset</th>
+                  <th>Setup</th>
+                  <th>Dir</th>
+                  <th>Amount</th>
+                  <th>Result</th>
+                  <th>Net P&amp;L</th>
+                  <th>Reason</th>
+                  <th>Mindset</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="historyTbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================================================================ -->
+      <!-- VIEW D: PERFORMANCE REVIEW                                       -->
+      <!-- ================================================================ -->
+      <div id="tab-review" class="tab-panel hidden">
+        <div class="status-banner info">
+          <span><strong>Statistical Sample Size Notice:</strong> Any setup or asset with fewer than <strong>20 completed trades</strong> is marked as <em>Low Sample Size</em>. Do not assume a setup is profitable based on a small number of demo trades.</span>
+        </div>
+
+        <!-- Rule-Following Trends & Discipline Impact -->
+        <div class="card">
+          <h3 class="section-title">📏 Rule-Following &amp; Discipline Trends</h3>
+          <div class="grid-3" id="reviewDisciplineGrid"></div>
+        </div>
+
+        <!-- Performance by Setup -->
+        <div class="card">
+          <h3 class="section-title">📐 Performance by Setup (with Sample Size)</h3>
+          <div class="table-responsive">
+            <table class="notebook-table">
+              <thead>
+                <tr>
+                  <th>Setup</th>
+                  <th>Sample Size (Total / Completed)</th>
+                  <th>Wins / Losses / Draws</th>
+                  <th>Win Rate</th>
+                  <th>Recorded Net P&amp;L</th>
+                  <th>Statistical Note</th>
+                </tr>
+              </thead>
+              <tbody id="reviewSetupTbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Performance by Asset -->
+        <div class="card">
+          <h3 class="section-title">💱 Performance by Asset</h3>
+          <div class="table-responsive">
+            <table class="notebook-table">
+              <thead>
+                <tr>
+                  <th>Asset</th>
+                  <th>Sample Size (Total / Completed)</th>
+                  <th>Wins / Losses</th>
+                  <th>Win Rate</th>
+                  <th>Recorded Net P&amp;L</th>
+                </tr>
+              </thead>
+              <tbody id="reviewAssetTbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Daily & Weekly Summaries -->
+        <div class="grid-2">
+          <div class="card">
+            <h3 class="section-title">📅 Daily Session Summaries</h3>
+            <div class="table-responsive">
+              <table class="notebook-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Trades</th>
+                    <th>Win Rate</th>
+                    <th>Recorded Net P&amp;L</th>
+                    <th>Ending Bal</th>
+                    <th>Rules %</th>
+                  </tr>
+                </thead>
+                <tbody id="reviewDailyTbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3 class="section-title">🗓️ Weekly Summaries (ISO Week)</h3>
+            <div class="table-responsive">
+              <table class="notebook-table">
+                <thead>
+                  <tr>
+                    <th>Week</th>
+                    <th>Trades</th>
+                    <th>Win Rate</th>
+                    <th>Recorded Net P&amp;L</th>
+                    <th>Rules %</th>
+                  </tr>
+                </thead>
+                <tbody id="reviewWeeklyTbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Most Common Mistakes -->
+        <div class="card">
+          <h3 class="section-title">⚠️ Most Common Recorded Mistakes</h3>
+          <div id="reviewMistakesContent"></div>
+        </div>
+      </div>
+
+      <!-- ================================================================ -->
+      <!-- VIEW E: BACKUP & EXPORT                                          -->
+      <!-- ================================================================ -->
+      <div id="tab-backup" class="tab-panel hidden">
+        <div class="card">
+          <h3 class="section-title">☁️ Cloud Sync vs. Local Export Backups</h3>
+          <p style="font-size:0.9rem; color:var(--ink-secondary); margin-bottom:0.75rem;">
+            <strong>How they differ:</strong>
+            Your primary journal database lives in <strong>Supabase PostgreSQL</strong> so your Android phone and laptop always load the same live account records.
+            <strong>Export backups (CSV / JSON)</strong> are offline snapshots stored on your device for spreadsheet analysis, personal archiving, or disaster recovery.
+          </p>
+
+          <div class="grid-2" style="margin-top:1rem;">
+            <div class="stat-box">
+              <h4>1. Export Trade History (CSV)</h4>
+              <p class="field-hint" style="margin:0.35rem 0 0.75rem;">Compatible with Excel and Google Sheets. Exports all sessions and trades.</p>
+              <button type="button" class="btn btn-primary" onclick="exportTradesCsv()">⬇ Download Trade History (.csv)</button>
+            </div>
+
+            <div class="stat-box">
+              <h4>2. Export Full Journal Backup (JSON)</h4>
+              <p class="field-hint" style="margin:0.35rem 0 0.75rem;">Complete structured backup of your profile currency, sessions, and trades.</p>
+              <button type="button" class="btn btn-primary" onclick="exportJournalJson()">⬇ Download Full Backup (.json)</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 class="section-title">📥 Import &amp; Restore JSON Backup</h3>
+          <p style="font-size:0.88rem; color:var(--ink-secondary); margin-bottom:0.85rem;">
+            Validates the JSON structure before importing. Arbitrary SQL files are strictly rejected. Existing sessions on the same date and existing trade sequence numbers (`T.N.`) are protected against duplicate overwrites.
+          </p>
+          <div class="form-grid">
+            <div class="form-group full-width">
+              <label for="importJsonFile">Select Valid Journal Backup (`.json`)</label>
+              <input type="file" id="importJsonFile" accept="application/json,.json" />
+            </div>
+            <div class="form-group full-width">
+              <button type="button" id="btnImportJson" class="btn btn-warning" onclick="handleJsonImport()">Validate &amp; Import Backup to Supabase</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- ==================================================================== -->
+  <!-- MODAL: CREATE NEW DAILY SESSION                                      -->
+  <!-- ==================================================================== -->
+  <div id="newSessionModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="newSessionModalTitle">
+    <div class="modal-card">
+      <div class="section-title">
+        <h3 id="newSessionModalTitle">➕ Start New Daily Notebook Session</h3>
+        <button type="button" class="btn btn-sm btn-secondary" onclick="closeNewSessionModal()">✕</button>
+      </div>
+      <form id="newSessionForm" class="form-grid">
+        <div class="form-group">
+          <label for="newSessDate">1. Date <span class="req">*</span></label>
+          <input type="date" id="newSessDate" required />
+        </div>
+        <div class="form-group">
+          <label for="newSessStartBal">2. Starting Balance (<span class="curr-code">INR</span>) <span class="req">*</span></label>
+          <input type="number" id="newSessStartBal" step="0.01" min="0" required placeholder="e.g., 10000.00" />
+        </div>
+        <div class="form-group">
+          <label for="newSessStartTime">3. Session Start Time <span class="req">*</span></label>
+          <input type="time" id="newSessStartTime" required />
+        </div>
+        <div class="form-group">
+          <label for="newSessEndTime">Session End Time <span class="opt">(optional)</span></label>
+          <input type="time" id="newSessEndTime" />
+        </div>
+        <div class="form-group full-width">
+          <label for="newSessOpenNotes">Opening Notes / Daily Plan <span class="opt">(optional)</span></label>
+          <textarea id="newSessOpenNotes" maxlength="2000" placeholder="Today's rules, max trades, mindset check..."></textarea>
+        </div>
+        <div class="form-group full-width" style="display:flex; justify-content:flex-end; gap:0.5rem;">
+          <button type="button" class="btn btn-secondary" onclick="closeNewSessionModal()">Cancel</button>
+          <button type="submit" id="btnCreateSessionSubmit" class="btn btn-primary">Create Session</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==================================================================== -->
+  <!-- APPLICATION JAVASCRIPT                                               -->
+  <!-- ==================================================================== -->
+  <script>
+    /*************************************************************************
+     * 1. SUPABASE CONFIGURATION
+     * Replace SUPABASE_URL and SUPABASE_ANON_KEY below with your project's
+     * values from Supabase Dashboard -> Project Settings -> API.
+     * NEVER place a service_role or secret key here!
+     *************************************************************************/
+    const DEFAULT_SUPABASE_URL = "YOUR_SUPABASE_PROJECT_URL";
+    const DEFAULT_SUPABASE_ANON_KEY = "YOUR_SUPABASE_PUBLISHABLE_OR_ANON_KEY";
+
+    // Harmless UI preference keys in localStorage (never used for journal data)
+    const UI_PREF_KEYS = {
+      SB_URL: "qtj_ui_supabase_url",
+      SB_KEY: "qtj_ui_supabase_anon_key",
+      ACTIVE_TAB: "qtj_ui_active_tab"
+    };
+
+    const CURRENCY_SYMBOLS = {
+      INR: "₹",
+      USD: "$",
+      EUR: "€",
+      GBP: "£",
+      BRL: "R$",
+      BDT: "৳",
+      PKR: "₨",
+      IDR: "Rp",
+      VND: "₫"
+    };
+
+    const PRESET_MINDSETS = [
+      "Calm",
+      "Confident",
+      "Fearful",
+      "Greedy",
+      "Impatient",
+      "Revenge Trading"
+    ];
+
+    // Runtime state (source of truth is Supabase PostgreSQL)
+    let supabaseClient = null;
+    let currentUser = null;
+    let userProfile = {
+      currency: "INR",
+      affirmation: "Me ek disciplined trader hoo."
+    };
+    let sessions = []; // Array of trading_sessions rows ordered by session_date DESC
+    let trades = [];   // Array of trades rows ordered by trade_seq ASC
+    let selectedSessionId = null;
+    let currentAuthMode = "login"; // 'login' | 'signup' | 'reset'
+    let isMutating = false;
+
+    /*************************************************************************
+     * 2. INITIALIZATION & SUPABASE CLIENT SETUP
+     *************************************************************************/
+    function getResolvedSupabaseConfig() {
+      const savedUrl = localStorage.getItem(UI_PREF_KEYS.SB_URL) || "";
+      const savedKey = localStorage.getItem(UI_PREF_KEYS.SB_KEY) || "";
+      const url = (DEFAULT_SUPABASE_URL !== "YOUR_SUPABASE_PROJECT_URL" && DEFAULT_SUPABASE_URL.trim())
+        ? DEFAULT_SUPABASE_URL.trim()
+        : savedUrl.trim();
+      const key = (DEFAULT_SUPABASE_ANON_KEY !== "YOUR_SUPABASE_PUBLISHABLE_OR_ANON_KEY" && DEFAULT_SUPABASE_ANON_KEY.trim())
+        ? DEFAULT_SUPABASE_ANON_KEY.trim()
+        : savedKey.trim();
+      return { url, key };
+    }
+
+    function isValidConfig(url, key) {
+      if (!url || !key) return false;
+      if (url.includes("YOUR_SUPABASE") || key.includes("YOUR_SUPABASE")) return false;
+      try {
+        const parsed = new URL(url);
+        return parsed.protocol === "https:" || parsed.hostname === "localhost";
+      } catch {
+        return false;
+      }
+    }
+
+    async function initApp() {
+      const { url, key } = getResolvedSupabaseConfig();
+
+      if (!isValidConfig(url, key)) {
+        document.getElementById("loadingView").classList.add("hidden");
+        document.getElementById("configWarningView").classList.remove("hidden");
+        setSyncStatus("Config Required", "error");
+        return;
+      }
+
+      try {
+        supabaseClient = window.supabase.createClient(url, key, {
+          auth: {
+            persistSession: true,
+            autoRefreshToken: true,
+            detectSessionInUrl: true
+          }
+        });
+
+        // Listen for auth state changes (Login, Logout, Password Recovery)
+        supabaseClient.auth.onAuthStateChange(async (event, session) => {
+          if (event === "PASSWORD_RECOVERY") {
+            showView("authView");
+            document.getElementById("newPasswordForm").classList.remove("hidden");
+            showBanner("Password recovery link verified. Please set your new password below.", "info");
+            return;
+          }
+
+          if (session && session.user) {
+            currentUser = session.user;
+            await onUserAuthenticated();
+          } else {
+            currentUser = null;
+            sessions = [];
+            trades = [];
+            selectedSessionId = null;
+            onUserSignedOut();
+          }
+        });
+
+        // Initial session check
+        const { data, error } = await supabaseClient.auth.getSession();
+        if (error) throw error;
+
+        if (data && data.session && data.session.user) {
+          currentUser = data.session.user;
+          await onUserAuthenticated();
+        } else {
+          onUserSignedOut();
+        }
+      } catch (err) {
+        document.getElementById("loadingView").classList.add("hidden");
+        showView("authView");
+        showBanner("Supabase connection error: " + (err.message || String(err)), "error");
+        setSyncStatus("Connection Error", "error");
+      }
+    }
+
+    function showView(viewId) {
+      ["loadingView", "configWarningView", "authView", "appView"].forEach(id => {
+        document.getElementById(id).classList.toggle("hidden", id !== viewId);
+      });
+    }
+
+    function showConfigModal() {
+      const { url, key } = getResolvedSupabaseConfig();
+      document.getElementById("cfgUrl").value = url;
+      document.getElementById("cfgKey").value = key;
+      showView("configWarningView");
+    }
+
+    document.getElementById("configForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const url = document.getElementById("cfgUrl").value.trim();
+      const key = document.getElementById("cfgKey").value.trim();
+
+      if (key.includes("service_role") || key.startsWith("sb_secret_")) {
+        showBanner("SECURITY BLOCK: Never use a service_role or secret key in browser code! Use your anon/publishable key.", "error");
+        return;
+      }
+
+      localStorage.setItem(UI_PREF_KEYS.SB_URL, url);
+      localStorage.setItem(UI_PREF_KEYS.SB_KEY, key);
+      showBanner("Supabase project credentials saved. Connecting...", "info");
+      await initApp();
+    });
+
+    /*************************************************************************
+     * 3. AUTHENTICATION HANDLERS
+     *************************************************************************/
+    function switchAuthMode(mode) {
+      currentAuthMode = mode;
+      const loginBtn = document.getElementById("tabAuthLogin");
+      const signupBtn = document.getElementById("tabAuthSignup");
+      const resetBtn = document.getElementById("tabAuthReset");
+      const passGroup = document.getElementById("authPasswordGroup");
+      const passInput = document.getElementById("authPassword");
+      const submitBtn = document.getElementById("authSubmitBtn");
+
+      loginBtn.className = mode === "login" ? "btn btn-sm btn-primary" : "btn btn-sm btn-secondary";
+      signupBtn.className = mode === "signup" ? "btn btn-sm btn-primary" : "btn btn-sm btn-secondary";
+      resetBtn.className = mode === "reset" ? "btn btn-sm btn-primary" : "btn btn-sm btn-secondary";
+
+      if (mode === "reset") {
+        passGroup.classList.add("hidden");
+        passInput.required = false;
+        submitBtn.textContent = "Send Password Recovery Email";
+      } else {
+        passGroup.classList.remove("hidden");
+        passInput.required = true;
+        submitBtn.textContent = mode === "login" ? "Login to Journal" : "Create Trader Account";
+      }
+    }
+
+    document.getElementById("authForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!supabaseClient) return;
+
+      const email = document.getElementById("authEmail").value.trim();
+      const password = document.getElementById("authPassword").value;
+      const submitBtn = document.getElementById("authSubmitBtn");
+
+      submitBtn.disabled = true;
+      hideBanner();
+
+      try {
+        if (currentAuthMode === "login") {
+          const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+          if (error) throw error;
+          showBanner("Logged in! Syncing your journal from Supabase...", "success");
+        } else if (currentAuthMode === "signup") {
+          const { data, error } = await supabaseClient.auth.signUp({
+            email,
+            password,
+            options: {
+              emailRedirectTo: window.location.origin + window.location.pathname
+            }
+          });
+          if (error) throw error;
+          if (data.user && !data.session) {
+            showBanner("Account created! Please check your email inbox to confirm your address before logging in.", "info");
+          } else {
+            showBanner("Account created and logged in!", "success");
+          }
+        } else if (currentAuthMode === "reset") {
+          const redirectUrl = window.location.origin + window.location.pathname;
+          const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+            redirectTo: redirectUrl
+          });
+          if (error) throw error;
+          showBanner("Password recovery link sent! Check your email and click the link to return here and set a new password.", "info");
+        }
+      } catch (err) {
+        showBanner("Authentication Error: " + (err.message || String(err)), "error");
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+
+    document.getElementById("newPasswordForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const newPassword = document.getElementById("newPasswordInput").value;
+      const btn = document.getElementById("newPasswordBtn");
+      btn.disabled = true;
+      try {
+        const { error } = await supabaseClient.auth.updateUser({ password: newPassword });
+        if (error) throw error;
+        document.getElementById("newPasswordForm").classList.add("hidden");
+        document.getElementById("newPasswordInput").value = "";
+        showBanner("Password updated successfully! You are now logged in.", "success");
+      } catch (err) {
+        showBanner("Failed to update password: " + (err.message || String(err)), "error");
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    document.getElementById("btnLogout").addEventListener("click", async () => {
+      if (!supabaseClient) return;
+      await supabaseClient.auth.signOut();
+      showBanner("You have been logged out safely.", "info");
+    });
+
+    async function onUserAuthenticated() {
+      document.getElementById("userEmailBadge").textContent = currentUser.email;
+      document.getElementById("userEmailBadge").classList.remove("hidden");
+      document.getElementById("btnRefreshCloud").classList.remove("hidden");
+      document.getElementById("btnLogout").classList.remove("hidden");
+
+      showView("appView");
+      const savedTab = localStorage.getItem(UI_PREF_KEYS.ACTIVE_TAB) || "dashboard";
+      switchTab(savedTab);
+
+      await fetchAllCloudData();
+    }
+
+    function onUserSignedOut() {
+      document.getElementById("userEmailBadge").classList.add("hidden");
+      document.getElementById("btnRefreshCloud").classList.add("hidden");
+      document.getElementById("btnLogout").classList.add("hidden");
+      setSyncStatus("Signed Out", "");
+      showView("authView");
+    }
+
+    /*************************************************************************
+     * 4. CLOUD SYNC DATA FETCHING & CURRENCY PROFILE
+     *************************************************************************/
+    document.getElementById("btnRefreshCloud").addEventListener("click", async () => {
+      await fetchAllCloudData(true);
+    });
+
+    async function fetchAllCloudData(showToast = false) {
+      if (!supabaseClient || !currentUser) return;
+      setSyncStatus("Syncing...", "saving");
+
+      try {
+        // 1. Fetch or initialize user profile
+        const { data: profData, error: profError } = await supabaseClient
+          .from("profiles")
+          .select("*")
+          .eq("id", currentUser.id)
+          .maybeSingle();
+
+        if (profError) throw profError;
+
+        if (!profData) {
+          const { data: insertedProf, error: insertProfErr } = await supabaseClient
+            .from("profiles")
+            .upsert({
+              id: currentUser.id,
+              email: currentUser.email,
+              currency: "INR",
+              affirmation: "Me ek disciplined trader hoo."
+            })
+            .select()
+            .single();
+          if (insertProfErr) throw insertProfErr;
+          userProfile = insertedProf;
+        } else {
+          userProfile = profData;
+        }
+
+        // 2. Fetch user's trading sessions (newest date first)
+        const { data: sessData, error: sessError } = await supabaseClient
+          .from("trading_sessions")
+          .select("*")
+          .eq("user_id", currentUser.id)
+          .order("session_date", { ascending: false });
+
+        if (sessError) throw sessError;
+        sessions = sessData || [];
+
+        // 3. Fetch user's trades ordered by trade_seq ASC
+        const { data: tradesData, error: tradesError } = await supabaseClient
+          .from("trades")
+          .select("*")
+          .eq("user_id", currentUser.id)
+          .order("trade_seq", { ascending: true });
+
+        if (tradesError) throw tradesError;
+        trades = tradesData || [];
+
+        // Maintain selectedSessionId if valid, else select newest session
+        if (!selectedSessionId || !sessions.some(s => s.id === selectedSessionId)) {
+          selectedSessionId = sessions.length > 0 ? sessions[0].id : null;
+        }
+
+        applyProfileToUI();
+        renderAllViews();
+        setSyncStatus("Cloud Synced", "online");
+
+        if (showToast) {
+          showBanner("Synced latest sessions and trades from Supabase Cloud.", "success");
+        }
+      } catch (err) {
+        setSyncStatus("Sync Error", "error");
+        showBanner("Failed to fetch cloud data: " + (err.message || String(err)), "error");
+      }
+    }
+
+    function applyProfileToUI() {
+      const curr = userProfile.currency || "INR";
+      const affirm = userProfile.affirmation || "Me ek disciplined trader hoo.";
+      document.getElementById("currencySelector").value = curr;
+      document.querySelectorAll(".curr-code").forEach(el => { el.textContent = curr; });
+      document.getElementById("headerAffirmation").textContent = `"${affirm}"`;
+      document.getElementById("dashAffirmation").textContent = `"${affirm}"`;
+      document.getElementById("journalAffirmation").textContent = `"${affirm}"`;
+    }
+
+    document.getElementById("currencySelector").addEventListener("change", async (e) => {
+      const newCurr = e.target.value;
+      if (!supabaseClient || !currentUser) return;
+      setSyncStatus("Saving Currency...", "saving");
+      try {
+        const { error } = await supabaseClient
+          .from("profiles")
+          .update({ currency: newCurr })
+          .eq("id", currentUser.id);
+        if (error) throw error;
+        userProfile.currency = newCurr;
+        applyProfileToUI();
+        renderAllViews();
+        setSyncStatus("Cloud Synced", "online");
+        showBanner(`Account display currency updated to ${newCurr}. (Values are not auto-converted).`, "info");
+      } catch (err) {
+        setSyncStatus("Sync Error", "error");
+        showBanner("Could not update currency: " + err.message, "error");
+      }
+    });
+
+    /*************************************************************************
+     * 5. FINANCIAL CALCULATION ENGINE (STRICT BINARY OPTIONS RULES)
+     *************************************************************************/
+    function formatMoney(amount) {
+      if (amount === null || amount === undefined || Number.isNaN(Number(amount))) {
+        return "Not recorded";
+      }
+      const sym = CURRENCY_SYMBOLS[userProfile.currency] || (userProfile.currency + " ");
+      const num = Number(amount);
+      const sign = num < 0 ? "-" : "";
+      return `${sign}${sym}${Math.abs(num).toLocaleString("en-IN", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      })}`;
+    }
+
+    function formatSignedPnl(amount) {
+      if (amount === null || amount === undefined || Number.isNaN(Number(amount))) {
+        return "Not recorded";
+      }
+      const sym = CURRENCY_SYMBOLS[userProfile.currency] || (userProfile.currency + " ");
+      const num = Number(amount);
+      const sign = num > 0 ? "+" : (num < 0 ? "-" : "");
+      return `${sign}${sym}${Math.abs(num).toLocaleString("en-IN", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      })}`;
+    }
+
+    /**
+     * Evaluates a single trade's financial status according to Section 6 rules:
+     * - WIN: Use recorded actual_pnl if provided. Never add stake to profit.
+     * - LOSS: Use recorded actual_pnl if provided.
+     * - DRAW: Use recorded actual_pnl if provided; otherwise 0 ONLY when draw_zero_confirmed is true.
+     * - PENDING: Exclude from finalized performance metrics.
+     * - Missing financial result: Show "Not recorded"; do not invent a value.
+     * - Do not count a pending or financially unrecorded trade as a completed win or loss.
+     */
+    function evaluateTradeFinancials(trade) {
+      const res = trade.result;
+      const rawPnl = trade.actual_pnl !== null && trade.actual_pnl !== undefined && trade.actual_pnl !== ""
+        ? Number(trade.actual_pnl)
+        : null;
+
+      if (res === "PENDING") {
+        return {
+          isPending: true,
+          hasRecordedPnl: false,
+          resolvedPnl: null,
+          isCompletedWin: false,
+          isCompletedLoss: false,
+          isCompletedDraw: false
+        };
+      }
+
+      if (res === "WIN") {
+        const hasPnl = rawPnl !== null && !Number.isNaN(rawPnl);
+        return {
+          isPending: false,
+          hasRecordedPnl: hasPnl,
+          resolvedPnl: hasPnl ? rawPnl : null,
+          isCompletedWin: hasPnl,
+          isCompletedLoss: false,
+          isCompletedDraw: false
+        };
+      }
+
+      if (res === "LOSS") {
+        const hasPnl = rawPnl !== null && !Number.isNaN(rawPnl);
+        return {
+          isPending: false,
+          hasRecordedPnl: hasPnl,
+          resolvedPnl: hasPnl ? rawPnl : null,
+          isCompletedWin: false,
+          isCompletedLoss: hasPnl,
+          isCompletedDraw: false
+        };
+      }
+
+      if (res === "DRAW") {
+        if (rawPnl !== null && !Number.isNaN(rawPnl)) {
+          return {
+            isPending: false,
+            hasRecordedPnl: true,
+            resolvedPnl: rawPnl,
+            isCompletedWin: false,
+            isCompletedLoss: false,
+            isCompletedDraw: true
+          };
+        }
+        if (trade.draw_zero_confirmed === true) {
+          return {
+            isPending: false,
+            hasRecordedPnl: true,
+            resolvedPnl: 0,
+            isCompletedWin: false,
+            isCompletedLoss: false,
+            isCompletedDraw: true
+          };
+        }
+        return {
+          isPending: false,
+          hasRecordedPnl: false,
+          resolvedPnl: null,
+          isCompletedWin: false,
+          isCompletedLoss: false,
+          isCompletedDraw: false
+        };
+      }
+
+      return {
+        isPending: false,
+        hasRecordedPnl: false,
+        resolvedPnl: null,
+        isCompletedWin: false,
+        isCompletedLoss: false,
+        isCompletedDraw: false
+      };
+    }
+
+    /**
+     * Computes aggregate metrics for any list of trades and an optional startingBalance.
+     */
+    function computeMetrics(tradeList, startingBalance = null) {
+      let totalTrades = tradeList.length;
+      let completedWins = 0;
+      let completedLosses = 0;
+      let completedDraws = 0;
+      let pendingCount = 0;
+      let unrecordedFinancialCount = 0;
+      let totalStaked = 0;
+      let recordedNetPnl = 0;
+      let hasAnyRecordedPnl = false;
+
+      let rulesRecordedCount = 0;
+      let rulesFollowedYesCount = 0;
+
+      for (const t of tradeList) {
+        const stake = Number(t.stake_amount) || 0;
+        totalStaked += stake;
+
+        const fin = evaluateTradeFinancials(t);
+        if (fin.isPending) {
+          pendingCount++;
+        } else if (!fin.hasRecordedPnl) {
+          unrecordedFinancialCount++;
+        } else {
+          hasAnyRecordedPnl = true;
+          recordedNetPnl += fin.resolvedPnl;
+          if (fin.isCompletedWin) completedWins++;
+          if (fin.isCompletedLoss) completedLosses++;
+          if (fin.isCompletedDraw) completedDraws++;
+        }
+
+        if (t.followed_rules === true || t.followed_rules === false) {
+          rulesRecordedCount++;
+          if (t.followed_rules === true) rulesFollowedYesCount++;
+        }
+      }
+
+      const winLossDenom = completedWins + completedLosses;
+      const winRate = winLossDenom > 0 ? (completedWins / winLossDenom) * 100 : null;
+      const ruleRate = rulesRecordedCount > 0 ? (rulesFollowedYesCount / rulesRecordedCount) * 100 : null;
+
+      const isBalanceIncomplete = (pendingCount > 0 || unrecordedFinancialCount > 0);
+      const startBalNum = startingBalance !== null && startingBalance !== undefined
+        ? Number(startingBalance)
+        : null;
+      const endingBalance = startBalNum !== null ? (startBalNum + recordedNetPnl) : null;
+
+      return {
+        totalTrades,
+        completedWins,
+        completedLosses,
+        completedDraws,
+        pendingCount,
+        unrecordedFinancialCount,
+        totalStaked,
+        recordedNetPnl,
+        hasAnyRecordedPnl,
+        winRate,
+        ruleRate,
+        rulesRecordedCount,
+        rulesFollowedYesCount,
+        startingBalance: startBalNum,
+        endingBalance,
+        isBalanceIncomplete
+      };
+    }
+
+    /*************************************************************************
+     * 6. DAILY SESSION MANAGEMENT (CREATE, SELECT, EDIT, CLOSE/LOCK, DELETE)
+     *************************************************************************/
+    function getSelectedSession() {
+      return sessions.find(s => s.id === selectedSessionId) || null;
+    }
+
+    function getTradesForSession(sessionId) {
+      return trades
+        .filter(t => t.session_id === sessionId)
+        .sort((a, b) => a.trade_seq - b.trade_seq);
+    }
+
+    document.getElementById("sessionSelector").addEventListener("change", (e) => {
+      selectedSessionId = e.target.value || null;
+      resetTradeForm();
+      renderAllViews();
+    });
+
+    function openNewSessionModal() {
+      const todayIso = new Date().toISOString().slice(0, 10);
+      const nowTime = new Date().toTimeString().slice(0, 5);
+      document.getElementById("newSessDate").value = todayIso;
+      document.getElementById("newSessStartTime").value = nowTime;
+      document.getElementById("newSessEndTime").value = "";
+      document.getElementById("newSessOpenNotes").value = "";
+
+      // Pre-fill starting balance with latest session's ending balance if available
+      if (sessions.length > 0) {
+        const latestSess = sessions[0];
+        const latestTrades = getTradesForSession(latestSess.id);
+        const m = computeMetrics(latestTrades, latestSess.starting_balance);
+        document.getElementById("newSessStartBal").value = m.endingBalance !== null ? m.endingBalance.toFixed(2) : "";
+      } else {
+        document.getElementById("newSessStartBal").value = "10000.00";
+      }
+
+      document.getElementById("newSessionModal").classList.remove("hidden");
+    }
+
+    function closeNewSessionModal() {
+      document.getElementById("newSessionModal").classList.add("hidden");
+    }
+
+    document.getElementById("newSessionForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (isMutating || !supabaseClient || !currentUser) return;
+
+      const session_date = document.getElementById("newSessDate").value;
+      const starting_balance = Number(document.getElementById("newSessStartBal").value);
+      const start_time = document.getElementById("newSessStartTime").value;
+      const end_time = document.getElementById("newSessEndTime").value || null;
+      const opening_notes = document.getElementById("newSessOpenNotes").value.trim();
+
+      // Prevent duplicate date before hitting DB
+      const existing = sessions.find(s => s.session_date === session_date);
+      if (existing) {
+        selectedSessionId = existing.id;
+        closeNewSessionModal();
+        renderAllViews();
+        showBanner(`A session for ${session_date} already exists. Switched to that session.`, "warning");
+        return;
+      }
+
+      isMutating = true;
+      const btn = document.getElementById("btnCreateSessionSubmit");
+      btn.disabled = true;
+      setSyncStatus("Creating Session...", "saving");
+
+      try {
+        const { data, error } = await supabaseClient
+          .from("trading_sessions")
+          .insert({
+            user_id: currentUser.id,
+            session_date,
+            starting_balance,
+            start_time,
+            end_time,
+            status: "OPEN",
+            opening_notes
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        selectedSessionId = data.id;
+        closeNewSessionModal();
+        await fetchAllCloudData();
+        switchTab("journal");
+        showBanner(`Daily session for ${session_date} created and synced!`, "success");
+      } catch (err) {
+        setSyncStatus("Save Failed", "error");
+        showBanner("Could not create session: " + (err.message || String(err)), "error");
+      } finally {
+        isMutating = false;
+        btn.disabled = false;
+      }
+    });
+
+    // Update current session details
+    document.getElementById("sessionEditForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const sess = getSelectedSession();
+      if (!sess || isMutating) return;
+
+      if (sess.status === "CLOSED") {
+        showBanner("Session is CLOSED. Click 'Unlock / Reopen Session to Edit' before modifying session details.", "warning");
+        return;
+      }
+
+      const session_date = document.getElementById("sessDate").value;
+      const starting_balance = Number(document.getElementById("sessStartBalance").value);
+      const start_time = document.getElementById("sessStartTime").value;
+      const end_time = document.getElementById("sessEndTime").value || null;
+      const opening_notes = document.getElementById("sessOpeningNotes").value.trim();
+      const closing_notes = document.getElementById("sessClosingNotes").value.trim();
+
+      isMutating = true;
+      const btn = document.getElementById("btnSaveSession");
+      btn.disabled = true;
+      setSyncStatus("Saving Session...", "saving");
+
+      try {
+        const { error } = await supabaseClient
+          .from("trading_sessions")
+          .update({
+            session_date,
+            starting_balance,
+            start_time,
+            end_time,
+            opening_notes,
+            closing_notes
+          })
+          .eq("id", sess.id)
+          .eq("user_id", currentUser.id);
+
+        if (error) throw error;
+        await fetchAllCloudData();
+        showBanner("Session details saved to Supabase.", "success");
+      } catch (err) {
+        setSyncStatus("Save Failed", "error");
+        showBanner("Error updating session: " + (err.message || String(err)), "error");
+      } finally {
+        isMutating = false;
+        btn.disabled = false;
+      }
+    });
+
+    // Lock / Close or Unlock / Reopen Session
+    async function toggleSessionLock(targetStatus) {
+      const sess = getSelectedSession();
+      if (!sess || isMutating) return;
+
+      if (targetStatus === "CLOSED") {
+        const confirmClose = window.confirm(
+          "Close and lock this session? While closed, its trades and financial results cannot be changed unless you explicitly reopen it."
+        );
+        if (!confirmClose) return;
+      } else {
+        const confirmOpen = window.confirm(
+          "Unlock and reopen this closed session for editing? This allows modifying session fields and trades."
+        );
+        if (!confirmOpen) return;
+      }
+
+      isMutating = true;
+      setSyncStatus("Updating Session...", "saving");
+
+      try {
+        const endTimeVal = (targetStatus === "CLOSED" && !sess.end_time)
+          ? new Date().toTimeString().slice(0, 5)
+          : sess.end_time;
+
+        const { error } = await supabaseClient
+          .from("trading_sessions")
+          .update({
+            status: targetStatus,
+            end_time: endTimeVal
+          })
+          .eq("id", sess.id)
+          .eq("user_id", currentUser.id);
+
+        if (error) throw error;
+        await fetchAllCloudData();
+        showBanner(
+          targetStatus === "CLOSED"
+            ? "Session CLOSED and financial results locked."
+            : "Session reopened explicitly for editing.",
+          "info"
+        );
+      } catch (err) {
+        setSyncStatus("Update Failed", "error");
+        showBanner("Could not change session status: " + err.message, "error");
+      } finally {
+        isMutating = false;
+      }
+    }
+
+    async function deleteCurrentSession() {
+      const sess = getSelectedSession();
+      if (!sess || isMutating) return;
+      const sessTrades = getTradesForSession(sess.id);
+
+      const confirmed = window.confirm(
+        `Delete session ${sess.session_date} and all ${sessTrades.length} associated trade(s)? This cannot be undone.`
+      );
+      if (!confirmed) return;
+
+      isMutating = true;
+      setSyncStatus("Deleting Session...", "saving");
+
+      try {
+        // If session is CLOSED, reopen first so the closed-session trigger on trades allows cascade delete
+        if (sess.status === "CLOSED") {
+          await supabaseClient
+            .from("trading_sessions")
+            .update({ status: "OPEN" })
+            .eq("id", sess.id)
+            .eq("user_id", currentUser.id);
+        }
+
+        const { error } = await supabaseClient
+          .from("trading_sessions")
+          .delete()
+          .eq("id", sess.id)
+          .eq("user_id", currentUser.id);
+
+        if (error) throw error;
+        selectedSessionId = null;
+        await fetchAllCloudData();
+        showBanner(`Session ${sess.session_date} deleted.`, "info");
+      } catch (err) {
+        setSyncStatus("Delete Failed", "error");
+        showBanner("Failed to delete session: " + err.message, "error");
+      } finally {
+        isMutating = false;
+      }
+    }
+
+    /*************************************************************************
+     * 7. TRADE ENTRY, EDITING, AND DELETION
+     *************************************************************************/
+    function getNextTradeSeq(sessionId) {
+      const list = getTradesForSession(sessionId);
+      if (list.length === 0) return 1;
+      return Math.max(...list.map(t => Number(t.trade_seq) || 0)) + 1;
+    }
+
+    function handleMindsetSelectChange() {
+      const sel = document.getElementById("trMindsetSelect").value;
+      const customGroup = document.getElementById("trCustomMindsetGroup");
+      const customInput = document.getElementById("trMindsetCustom");
+      if (sel === "CUSTOM") {
+        customGroup.classList.remove("hidden");
+        customInput.required = true;
+      } else {
+        customGroup.classList.add("hidden");
+        customInput.required = false;
+      }
+    }
+
+    function handleResultChange() {
+      const res = document.getElementById("trResult").value;
+      const pnlInput = document.getElementById("trActualPnl");
+      const drawGroup = document.getElementById("drawConfirmGroup");
+      const calcBtn = document.getElementById("btnAutoCalcPnl");
+
+      if (res === "PENDING") {
+        pnlInput.value = "";
+        pnlInput.disabled = true;
+        calcBtn.disabled = true;
+        drawGroup.classList.add("hidden");
+        document.getElementById("trDrawConfirm").checked = false;
+      } else if (res === "DRAW") {
+        pnlInput.disabled = false;
+        calcBtn.disabled = false;
+        drawGroup.classList.remove("hidden");
+      } else {
+        pnlInput.disabled = false;
+        calcBtn.disabled = false;
+        drawGroup.classList.add("hidden");
+        document.getElementById("trDrawConfirm").checked = false;
+      }
+      handlePnlHelperUpdate();
+    }
+
+    function handlePnlHelperUpdate() {
+      const stake = Number(document.getElementById("trAmount").value);
+      const payout = Number(document.getElementById("trPayoutPct").value);
+      const res = document.getElementById("trResult").value;
+      const hint = document.getElementById("pnlHelperHint");
+
+      if (res === "WIN" && stake > 0 && payout > 0) {
+        const netWin = ((stake * payout) / 100).toFixed(2);
+        hint.textContent = `Helper: At ${payout}% payout on ${stake}, net profit is +${netWin} (click Calc to fill).`;
+      } else if (res === "LOSS" && stake > 0) {
+        hint.textContent = `Helper: Full stake loss is -${stake.toFixed(2)} (click Calc to fill).`;
+      } else {
+        hint.textContent = "Binary rule: WIN net profit excludes stake. Leave blank if unrecorded.";
+      }
+    }
+
+    function applyCalculatedPnl() {
+      const stake = Number(document.getElementById("trAmount").value);
+      const payout = Number(document.getElementById("trPayoutPct").value);
+      const res = document.getElementById("trResult").value;
+      const pnlInput = document.getElementById("trActualPnl");
+
+      if (!(stake > 0)) {
+        showBanner("Enter Stake Amount first to calculate P&L.", "warning");
+        return;
+      }
+      if (res === "WIN") {
+        if (!(payout > 0)) {
+          showBanner("Enter Payout % (e.g., 85) to calculate net WIN profit.", "warning");
+          return;
+        }
+        pnlInput.value = ((stake * payout) / 100).toFixed(2);
+      } else if (res === "LOSS") {
+        pnlInput.value = (-Math.abs(stake)).toFixed(2);
+      } else if (res === "DRAW") {
+        pnlInput.value = "0.00";
+        document.getElementById("trDrawConfirm").checked = true;
+      }
+    }
+
+    function resetTradeForm() {
+      const form = document.getElementById("tradeForm");
+      form.reset();
+      document.getElementById("tradeEditId").value = "";
+      document.getElementById("tradeFormTitle").textContent = "✍️ Record Trade in Current Session";
+      document.getElementById("btnSubmitTrade").textContent = "Save Trade to Cloud";
+      document.getElementById("btnCancelEditTrade").classList.add("hidden");
+
+      const nextSeq = selectedSessionId ? getNextTradeSeq(selectedSessionId) : 1;
+      document.getElementById("trSeqDisplay").value = `T${nextSeq}`;
+      document.getElementById("nextTnPreview").textContent = `Next T.N.: T${nextSeq}`;
+
+      handleMindsetSelectChange();
+      handleResultChange();
+    }
+
+    document.getElementById("tradeForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (isMutating || !supabaseClient || !currentUser) return;
+
+      const sess = getSelectedSession();
+      if (!sess) {
+        showBanner("Please select or create a trading session first.", "warning");
+        return;
+      }
+      if (sess.status === "CLOSED") {
+        showBanner("This session is CLOSED. Unlock/reopen the session before adding or editing trades.", "warning");
+        return;
+      }
+
+      const editId = document.getElementById("tradeEditId").value.trim();
+      const asset = document.getElementById("trAsset").value.trim();
+      const setup = document.getElementById("trSetup").value;
+      const direction = document.getElementById("trDirection").value;
+      const stake_amount = Number(document.getElementById("trAmount").value);
+      const result = document.getElementById("trResult").value;
+      const reason = document.getElementById("trReason").value.trim();
+
+      const mindsetSel = document.getElementById("trMindsetSelect").value;
+      const mindset = mindsetSel === "CUSTOM"
+        ? document.getElementById("trMindsetCustom").value.trim()
+        : mindsetSel;
+
+      if (!mindset) {
+        showBanner("Please enter a custom mindset description.", "warning");
+        return;
+      }
+
+      const entry_time = document.getElementById("trEntryTime").value || null;
+      const expiry_duration = document.getElementById("trExpiry").value.trim() || null;
+      const payoutRaw = document.getElementById("trPayoutPct").value.trim();
+      const payout_pct = payoutRaw !== "" ? Number(payoutRaw) : null;
+
+      const pnlRaw = document.getElementById("trActualPnl").value.trim();
+      let actual_pnl = pnlRaw !== "" ? Number(pnlRaw) : null;
+
+      // Validate sign rules for WIN / LOSS / PENDING
+      if (result === "PENDING") {
+        actual_pnl = null;
+      } else if (result === "WIN" && actual_pnl !== null && actual_pnl < 0) {
+        showBanner("A WIN trade cannot have a negative Net P&L. Enter net profit (>= 0) or leave blank.", "error");
+        return;
+      } else if (result === "LOSS" && actual_pnl !== null && actual_pnl > 0) {
+        // Automatically convert positive loss entry if user confirms, or alert clearly
+        showBanner("For a LOSS trade, Actual Net P&L must be negative (e.g., -100) or 0.", "error");
+        return;
+      }
+
+      const draw_zero_confirmed = result === "DRAW"
+        ? document.getElementById("trDrawConfirm").checked
+        : false;
+
+      const rulesRaw = document.getElementById("trFollowedRules").value;
+      const followed_rules = rulesRaw === "true" ? true : (rulesRaw === "false" ? false : null);
+      const mistake_made = document.getElementById("trMistake").value.trim() || null;
+      const chart_notes = document.getElementById("trChartNotes").value.trim() || null;
+
+      isMutating = true;
+      const submitBtn = document.getElementById("btnSubmitTrade");
+      submitBtn.disabled = true;
+      setSyncStatus("Saving Trade...", "saving");
+
+      try {
+        if (editId) {
+          const { error } = await supabaseClient
+            .from("trades")
+            .update({
+              asset,
+              setup,
+              direction,
+              stake_amount,
+              result,
+              reason,
+              mindset,
+              entry_time,
+              expiry_duration,
+              payout_pct,
+              actual_pnl,
+              draw_zero_confirmed,
+              followed_rules,
+              mistake_made,
+              chart_notes
+            })
+            .eq("id", editId)
+            .eq("user_id", currentUser.id);
+
+          if (error) throw error;
+          await fetchAllCloudData();
+          resetTradeForm();
+          showBanner("Trade updated and synced to cloud.", "success");
+        } else {
+          const trade_seq = getNextTradeSeq(sess.id);
+          const { error } = await supabaseClient
+            .from("trades")
+            .insert({
+              session_id: sess.id,
+              user_id: currentUser.id,
+              trade_seq,
+              asset,
+              setup,
+              direction,
+              stake_amount,
+              result,
+              reason,
+              mindset,
+              entry_time,
+              expiry_duration,
+              payout_pct,
+              actual_pnl,
+              draw_zero_confirmed,
+              followed_rules,
+              mistake_made,
+              chart_notes
+            });
+
+          if (error) throw error;
+          await fetchAllCloudData();
+          resetTradeForm();
+          showBanner(`Trade T${trade_seq} saved to Supabase!`, "success");
+        }
+      } catch (err) {
+        setSyncStatus("Save Failed", "error");
+        showBanner("Failed to save trade: " + (err.message || String(err)), "error");
+      } finally {
+        isMutating = false;
+        submitBtn.disabled = false;
+      }
+    });
+
+    function startEditTrade(tradeId) {
+      const t = trades.find(item => item.id === tradeId);
+      if (!t) return;
+
+      const parentSess = sessions.find(s => s.id === t.session_id);
+      if (parentSess && parentSess.status === "CLOSED") {
+        showBanner(
+          `Session ${parentSess.session_date} is CLOSED. Switch to that session and click 'Unlock / Reopen Session to Edit' first.`,
+          "warning"
+        );
+        return;
+      }
+
+      if (selectedSessionId !== t.session_id) {
+        selectedSessionId = t.session_id;
+        renderAllViews();
+      }
+
+      switchTab("journal");
+
+      document.getElementById("tradeEditId").value = t.id;
+      document.getElementById("trSeqDisplay").value = `T${t.trade_seq}`;
+      document.getElementById("trAsset").value = t.asset;
+      document.getElementById("trSetup").value = t.setup;
+      document.getElementById("trDirection").value = t.direction;
+      document.getElementById("trAmount").value = t.stake_amount;
+      document.getElementById("trResult").value = t.result;
+      document.getElementById("trReason").value = t.reason;
+
+      if (PRESET_MINDSETS.includes(t.mindset)) {
+        document.getElementById("trMindsetSelect").value = t.mindset;
+        document.getElementById("trMindsetCustom").value = "";
+      } else {
+        document.getElementById("trMindsetSelect").value = "CUSTOM";
+        document.getElementById("trMindsetCustom").value = t.mindset;
+      }
+
+      document.getElementById("trEntryTime").value = t.entry_time ? t.entry_time.slice(0, 5) : "";
+      document.getElementById("trExpiry").value = t.expiry_duration || "";
+      document.getElementById("trPayoutPct").value = t.payout_pct !== null ? t.payout_pct : "";
+      document.getElementById("trActualPnl").value = t.actual_pnl !== null ? t.actual_pnl : "";
+      document.getElementById("trDrawConfirm").checked = Boolean(t.draw_zero_confirmed);
+      document.getElementById("trFollowedRules").value =
+        t.followed_rules === true ? "true" : (t.followed_rules === false ? "false" : "");
+      document.getElementById("trMistake").value = t.mistake_made || "";
+      document.getElementById("trChartNotes").value = t.chart_notes || "";
+
+      handleMindsetSelectChange();
+      handleResultChange();
+
+      document.getElementById("tradeFormTitle").textContent = `✏️ Editing Trade T${t.trade_seq}`;
+      document.getElementById("btnSubmitTrade").textContent = `Update Trade T${t.trade_seq}`;
+      document.getElementById("btnCancelEditTrade").classList.remove("hidden");
+      document.getElementById("tradeEntryCard").scrollIntoView({ behavior: "smooth" });
+    }
+
+    async function deleteTrade(tradeId) {
+      const t = trades.find(item => item.id === tradeId);
+      if (!t || isMutating) return;
+
+      const parentSess = sessions.find(s => s.id === t.session_id);
+      if (parentSess && parentSess.status === "CLOSED") {
+        showBanner(
+          `Session ${parentSess.session_date} is CLOSED. Unlock/reopen the session before deleting trades.`,
+          "warning"
+        );
+        return;
+      }
+
+      const confirmed = window.confirm(
+        `Delete trade T${t.trade_seq} (${t.asset} - ${t.direction})? This action cannot be undone.`
+      );
+      if (!confirmed) return;
+
+      isMutating = true;
+      setSyncStatus("Deleting Trade...", "saving");
+
+      try {
+        const { error } = await supabaseClient
+          .from("trades")
+          .delete()
+          .eq("id", tradeId)
+          .eq("user_id", currentUser.id);
+
+        if (error) throw error;
+        if (document.getElementById("tradeEditId").value === tradeId) {
+          resetTradeForm();
+        }
+        await fetchAllCloudData();
+        showBanner(`Trade T${t.trade_seq} deleted.`, "info");
+      } catch (err) {
+        setSyncStatus("Delete Failed", "error");
+        showBanner("Failed to delete trade: " + err.message, "error");
+      } finally {
+        isMutating = false;
+      }
+    }
+
+    /*************************************************************************
+     * 8. RENDERING VIEWS (DASHBOARD, DAILY JOURNAL, HISTORY, REVIEW)
+     *************************************************************************/
+    function switchTab(tabId) {
+      localStorage.setItem(UI_PREF_KEYS.ACTIVE_TAB, tabId);
+      document.querySelectorAll(".nav-tab").forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.tab === tabId);
+      });
+      ["dashboard", "journal", "history", "review", "backup"].forEach(id => {
+        document.getElementById(`tab-${id}`).classList.toggle("hidden", id !== tabId);
+      });
+    }
+
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return "";
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function renderAllViews() {
+      renderSessionSelector();
+      renderDashboardView();
+      renderDailyJournalView();
+      renderHistoryView();
+      renderPerformanceReviewView();
+    }
+
+    function renderSessionSelector() {
+      const sel = document.getElementById("sessionSelector");
+      const badge = document.getElementById("activeSessionStatusBadge");
+      sel.innerHTML = "";
+
+      if (sessions.length === 0) {
+        const opt = document.createElement("option");
+        opt.value = "";
+        opt.textContent = "No sessions yet — Create one";
+        sel.appendChild(opt);
+        badge.textContent = "NONE";
+        badge.className = "badge badge-closed";
+        return;
+      }
+
+      for (const s of sessions) {
+        const count = getTradesForSession(s.id).length;
+        const opt = document.createElement("option");
+        opt.value = s.id;
+        opt.textContent = `${s.session_date} (${count} trade${count === 1 ? "" : "s"}) [${s.status}]`;
+        if (s.id === selectedSessionId) opt.selected = true;
+        sel.appendChild(opt);
+      }
+
+      const active = getSelectedSession();
+      if (active) {
+        badge.textContent = active.status;
+        badge.className = active.status === "OPEN" ? "badge badge-open" : "badge badge-closed";
+      }
+    }
+
+    function renderDashboardView() {
+      const sess = getSelectedSession();
+      const warnBox = document.getElementById("dashIncompleteWarning");
+      const warnText = document.getElementById("dashIncompleteText");
+
+      if (!sess) {
+        document.getElementById("dashSessionTitle").textContent = "No Session Selected";
+        document.getElementById("dashSessionMeta").textContent = "Click '+ New Daily Session' above to start your trading journal.";
+        warnBox.classList.add("hidden");
+        document.getElementById("statStartBal").textContent = "—";
+        document.getElementById("statSessionTime").textContent = "Start Time: —";
+        document.getElementById("statEndBal").textContent = "—";
+        document.getElementById("statEndBalStatus").textContent = "Create a session";
+        document.getElementById("statNetPnl").textContent = "—";
+        document.getElementById("statTotalStaked").textContent = "Total Staked: —";
+        document.getElementById("statWinRate").textContent = "—";
+        document.getElementById("statWinLossBreakdown").textContent = "0W / 0L / 0D / 0P";
+        document.getElementById("statTotalTrades").textContent = "0";
+        document.getElementById("statUnrecordedCount").textContent = "0 unrecorded P&L";
+        document.getElementById("statWinsLosses").textContent = "0 / 0";
+        document.getElementById("statDrawsPending").textContent = "Draws: 0 | Pending: 0";
+        document.getElementById("statRulePct").textContent = "—";
+        document.getElementById("statRuleSub").textContent = "No trades yet";
+        return;
+      }
+
+      const sessTrades = getTradesForSession(sess.id);
+      const m = computeMetrics(sessTrades, sess.starting_balance);
+
+      document.getElementById("dashSessionTitle").textContent = `Session: ${sess.session_date} (${sess.status})`;
+      document.getElementById("dashSessionMeta").textContent =
+        `Start Time: ${sess.start_time.slice(0, 5)}` +
+        (sess.end_time ? ` | End Time: ${sess.end_time.slice(0, 5)}` : "") +
+        (sess.opening_notes ? ` | Plan: ${sess.opening_notes}` : "");
+
+      document.getElementById("statStartBal").textContent = formatMoney(m.startingBalance);
+      document.getElementById("statSessionTime").textContent =
+        `Start: ${sess.start_time.slice(0, 5)}` + (sess.end_time ? ` → ${sess.end_time.slice(0, 5)}` : "");
+
+      document.getElementById("statEndBal").textContent = formatMoney(m.endingBalance);
+      if (m.isBalanceIncomplete) {
+        document.getElementById("statEndBalStatus").textContent =
+          `⚠️ Incomplete (${m.pendingCount} pending, ${m.unrecordedFinancialCount} unrecorded)`;
+        warnBox.classList.remove("hidden");
+        warnText.textContent =
+          `Ending balance (${formatMoney(m.endingBalance)}) reflects only finalized, recorded trades. ` +
+          `${m.pendingCount} trade(s) are PENDING and ${m.unrecordedFinancialCount} trade(s) have "Not recorded" financial results.`;
+      } else {
+        document.getElementById("statEndBalStatus").textContent = "✓ Complete (all finalized)";
+        warnBox.classList.add("hidden");
+      }
+
+      const netPnlEl = document.getElementById("statNetPnl");
+      if (m.totalTrades > 0 && !m.hasAnyRecordedPnl && m.unrecordedFinancialCount > 0) {
+        netPnlEl.textContent = "Not recorded";
+        netPnlEl.className = "stat-value pnl-unrec";
+      } else {
+        netPnlEl.textContent = formatSignedPnl(m.recordedNetPnl);
+        netPnlEl.className = "stat-value " + (m.recordedNetPnl > 0 ? "pnl-pos" : (m.recordedNetPnl < 0 ? "pnl-neg" : ""));
+      }
+      document.getElementById("statTotalStaked").textContent = `Total Staked: ${formatMoney(m.totalStaked)}`;
+
+      document.getElementById("statWinRate").textContent =
+        m.winRate !== null ? `${m.winRate.toFixed(1)}%` : "0.0%";
+      document.getElementById("statWinLossBreakdown").textContent =
+        `${m.completedWins}W / ${m.completedLosses}L / ${m.completedDraws}D / ${m.pendingCount}P`;
+
+      document.getElementById("statTotalTrades").textContent = String(m.totalTrades);
+      document.getElementById("statUnrecordedCount").textContent =
+        `${m.unrecordedFinancialCount} trade(s) with unrecorded P&L`;
+
+      document.getElementById("statWinsLosses").textContent = `${m.completedWins} / ${m.completedLosses}`;
+      document.getElementById("statDrawsPending").textContent =
+        `Draws: ${m.completedDraws} | Pending: ${m.pendingCount}`;
+
+      document.getElementById("statRulePct").textContent =
+        m.ruleRate !== null ? `${m.ruleRate.toFixed(1)}%` : "N/A";
+      document.getElementById("statRuleSub").textContent =
+        m.rulesRecordedCount > 0
+          ? `${m.rulesFollowedYesCount} of ${m.rulesRecordedCount} recorded trades`
+          : "No rule answers recorded yet";
+    }
+
+    function renderDailyJournalView() {
+      const sess = getSelectedSession();
+      const emptyBox = document.getElementById("journalNoSessionState");
+      const activeBox = document.getElementById("journalActiveContent");
+
+      if (!sess) {
+        emptyBox.classList.remove("hidden");
+        activeBox.classList.add("hidden");
+        return;
+      }
+
+      emptyBox.classList.add("hidden");
+      activeBox.classList.remove("hidden");
+
+      const isClosed = sess.status === "CLOSED";
+      document.getElementById("journalSheetHeading").textContent =
+        `Notebook Page — ${sess.session_date} [${sess.status}]`;
+      document.getElementById("journalTimestamps").textContent =
+        `Created: ${new Date(sess.created_at).toLocaleString()} | Updated: ${new Date(sess.updated_at).toLocaleString()}`;
+
+      document.getElementById("sessDate").value = sess.session_date;
+      document.getElementById("sessStartBalance").value = sess.starting_balance;
+      document.getElementById("sessStartTime").value = sess.start_time ? sess.start_time.slice(0, 5) : "";
+      document.getElementById("sessEndTime").value = sess.end_time ? sess.end_time.slice(0, 5) : "";
+      document.getElementById("sessOpeningNotes").value = sess.opening_notes || "";
+      document.getElementById("sessClosingNotes").value = sess.closing_notes || "";
+
+      // Disable session fields when closed
+      ["sessDate", "sessStartBalance", "sessStartTime", "sessEndTime", "sessOpeningNotes", "sessClosingNotes", "btnSaveSession"].forEach(id => {
+        document.getElementById(id).disabled = isClosed;
+      });
+
+      document.getElementById("btnCloseSession").classList.toggle("hidden", isClosed);
+      document.getElementById("btnReopenSession").classList.toggle("hidden", !isClosed);
+      document.getElementById("closedSessionBanner").classList.toggle("hidden", !isClosed);
+
+      // Disable trade entry form inputs when session is closed
+      document.querySelectorAll("#tradeForm input, #tradeForm select, #tradeForm button").forEach(el => {
+        if (el.id === "trSeqDisplay") return;
+        el.disabled = isClosed;
+      });
+      if (!isClosed) {
+        handleResultChange();
+      }
+
+      if (!document.getElementById("tradeEditId").value) {
+        const nextSeq = getNextTradeSeq(sess.id);
+        document.getElementById("trSeqDisplay").value = `T${nextSeq}`;
+        document.getElementById("nextTnPreview").textContent = `Next T.N.: T${nextSeq}`;
+      }
+
+      // Render trades table for this session
+      const sessTrades = getTradesForSession(sess.id);
+      document.getElementById("sessionTradeCountLabel").textContent =
+        `${sessTrades.length} trade${sessTrades.length === 1 ? "" : "s"} recorded`;
+
+      const emptyTrades = document.getElementById("sessionTradesEmpty");
+      const tableWrap = document.getElementById("sessionTradesTableWrap");
+      const tbody = document.getElementById("sessionTradesTbody");
+      tbody.innerHTML = "";
+
+      if (sessTrades.length === 0) {
+        emptyTrades.classList.remove("hidden");
+        tableWrap.classList.add("hidden");
+        return;
+      }
+
+      emptyTrades.classList.add("hidden");
+      tableWrap.classList.remove("hidden");
+
+      for (const t of sessTrades) {
+        const fin = evaluateTradeFinancials(t);
+        const resClass = `badge-${t.result.toLowerCase()}`;
+        const dirClass = t.direction === "CALL" ? "badge-call" : "badge-put";
+
+        let pnlHtml = `<span class="pnl-unrec">Not recorded</span>`;
+        if (fin.isPending) {
+          pnlHtml = `<span class="field-hint">Pending</span>`;
+        } else if (fin.hasRecordedPnl) {
+          const cls = fin.resolvedPnl > 0 ? "pnl-pos" : (fin.resolvedPnl < 0 ? "pnl-neg" : "");
+          pnlHtml = `<span class="mono ${cls}">${escapeHtml(formatSignedPnl(fin.resolvedPnl))}</span>`;
+        }
+
+        const extraParts = [];
+        if (t.followed_rules === true) extraParts.push(`Rules: ✅ Yes`);
+        if (t.followed_rules === false) extraParts.push(`Rules: ❌ No`);
+        if (t.entry_time) extraParts.push(`Time: ${escapeHtml(t.entry_time.slice(0, 5))}`);
+        if (t.expiry_duration) extraParts.push(`Exp: ${escapeHtml(t.expiry_duration)}`);
+        if (t.payout_pct !== null) extraParts.push(`Payout: ${escapeHtml(t.payout_pct)}%`);
+        if (t.mistake_made) extraParts.push(`Mistake: ${escapeHtml(t.mistake_made)}`);
+        if (t.chart_notes) extraParts.push(`Notes: ${escapeHtml(t.chart_notes)}`);
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="mono"><strong>T${escapeHtml(t.trade_seq)}</strong></td>
+          <td><strong>${escapeHtml(t.asset)}</strong></td>
+          <td>${escapeHtml(t.setup)}</td>
+          <td><span class="badge ${dirClass}">${escapeHtml(t.direction)}</span></td>
+          <td class="mono">${escapeHtml(formatMoney(t.stake_amount))}</td>
+          <td><span class="badge ${resClass}">${escapeHtml(t.result)}</span></td>
+          <td>${pnlHtml}</td>
+          <td>${escapeHtml(t.reason)}</td>
+          <td>${escapeHtml(t.mindset)}</td>
+          <td style="font-size:0.78rem; color:var(--ink-secondary);">${extraParts.join(" • ") || "—"}</td>
+          <td style="white-space:nowrap;">
+            <button type="button" class="btn btn-sm btn-secondary" onclick="startEditTrade('${t.id}')" ${isClosed ? "disabled" : ""}>Edit</button>
+            <button type="button" class="btn btn-sm btn-danger" onclick="deleteTrade('${t.id}')" ${isClosed ? "disabled" : ""}>Del</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      }
+    }
+
+    function resetHistoryFilters() {
+      document.getElementById("fltAsset").value = "";
+      document.getElementById("fltDateFrom").value = "";
+      document.getElementById("fltDateTo").value = "";
+      document.getElementById("fltSetup").value = "ALL";
+      document.getElementById("fltDirection").value = "ALL";
+      document.getElementById("fltResult").value = "ALL";
+      document.getElementById("fltMindset").value = "";
+      document.getElementById("fltSort").value = "NEWEST";
+      renderHistoryView();
+    }
+
+    function renderHistoryView() {
+      const assetQ = document.getElementById("fltAsset").value.trim().toLowerCase();
+      const dateFrom = document.getElementById("fltDateFrom").value;
+      const dateTo = document.getElementById("fltDateTo").value;
+      const setupFlt = document.getElementById("fltSetup").value;
+      const dirFlt = document.getElementById("fltDirection").value;
+      const resFlt = document.getElementById("fltResult").value;
+      const mindsetQ = document.getElementById("fltMindset").value.trim().toLowerCase();
+      const sortOrder = document.getElementById("fltSort").value;
+
+      const sessionMap = new Map(sessions.map(s => [s.id, s]));
+
+      let filtered = trades.filter(t => {
+        const s = sessionMap.get(t.session_id);
+        const sDate = s ? s.session_date : "";
+        if (assetQ && !t.asset.toLowerCase().includes(assetQ)) return false;
+        if (dateFrom && sDate < dateFrom) return false;
+        if (dateTo && sDate > dateTo) return false;
+        if (setupFlt !== "ALL" && t.setup !== setupFlt) return false;
+        if (dirFlt !== "ALL" && t.direction !== dirFlt) return false;
+        if (resFlt !== "ALL" && t.result !== resFlt) return false;
+        if (mindsetQ && !t.mindset.toLowerCase().includes(mindsetQ)) return false;
+        return true;
+      });
+
+      filtered.sort((a, b) => {
+        const sA = sessionMap.get(a.session_id)?.session_date || "";
+        const sB = sessionMap.get(b.session_id)?.session_date || "";
+        if (sA !== sB) {
+          return sortOrder === "NEWEST" ? sB.localeCompare(sA) : sA.localeCompare(sB);
+        }
+        return sortOrder === "NEWEST" ? (b.trade_seq - a.trade_seq) : (a.trade_seq - b.trade_seq);
+      });
+
+      document.getElementById("historySummaryCount").textContent =
+        `${filtered.length} trade${filtered.length === 1 ? "" : "s"} matched`;
+
+      const emptyEl = document.getElementById("historyEmptyState");
+      const wrapEl = document.getElementById("historyTableWrap");
+      const tbody = document.getElementById("historyTbody");
+      tbody.innerHTML = "";
+
+      if (filtered.length === 0) {
+        emptyEl.classList.remove("hidden");
+        wrapEl.classList.add("hidden");
+        return;
+      }
+
+      emptyEl.classList.add("hidden");
+      wrapEl.classList.remove("hidden");
+
+      for (const t of filtered) {
+        const sess = sessionMap.get(t.session_id);
+        const sessDate = sess ? sess.session_date : "—";
+        const fin = evaluateTradeFinancials(t);
+        const resClass = `badge-${t.result.toLowerCase()}`;
+        const dirClass = t.direction === "CALL" ? "badge-call" : "badge-put";
+
+        let pnlHtml = `<span class="pnl-unrec">Not recorded</span>`;
+        if (fin.isPending) {
+          pnlHtml = `<span class="field-hint">Pending</span>`;
+        } else if (fin.hasRecordedPnl) {
+          const cls = fin.resolvedPnl > 0 ? "pnl-pos" : (fin.resolvedPnl < 0 ? "pnl-neg" : "");
+          pnlHtml = `<span class="mono ${cls}">${escapeHtml(formatSignedPnl(fin.resolvedPnl))}</span>`;
+        }
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="mono">${escapeHtml(sessDate)}</td>
+          <td class="mono"><strong>T${escapeHtml(t.trade_seq)}</strong></td>
+          <td><strong>${escapeHtml(t.asset)}</strong></td>
+          <td>${escapeHtml(t.setup)}</td>
+          <td><span class="badge ${dirClass}">${escapeHtml(t.direction)}</span></td>
+          <td class="mono">${escapeHtml(formatMoney(t.stake_amount))}</td>
+          <td><span class="badge ${resClass}">${escapeHtml(t.result)}</span></td>
+          <td>${pnlHtml}</td>
+          <td>${escapeHtml(t.reason)}</td>
+          <td>${escapeHtml(t.mindset)}</td>
+          <td style="white-space:nowrap;">
+            <button type="button" class="btn btn-sm btn-secondary" onclick="startEditTrade('${t.id}')">Edit</button>
+            <button type="button" class="btn btn-sm btn-danger" onclick="deleteTrade('${t.id}')">Del</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      }
+    }
+
+    function getIsoWeekKey(dateStr) {
+      const d = new Date(dateStr + "T00:00:00Z");
+      if (Number.isNaN(d.getTime())) return "Unknown";
+      const dayNum = d.getUTCDay() || 7;
+      d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+      const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+      const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+      return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, "0")}`;
+    }
+
+    function renderPerformanceReviewView() {
+      // 1. Discipline & Rule-Following Comparison
+      const allMetrics = computeMetrics(trades);
+      const followedYesTrades = trades.filter(t => t.followed_rules === true);
+      const followedNoTrades = trades.filter(t => t.followed_rules === false);
+      const mYes = computeMetrics(followedYesTrades);
+      const mNo = computeMetrics(followedNoTrades);
+
+      document.getElementById("reviewDisciplineGrid").innerHTML = `
+        <div class="stat-box">
+          <span class="stat-label">Overall Rule Adherence</span>
+          <span class="stat-value">${allMetrics.ruleRate !== null ? allMetrics.ruleRate.toFixed(1) + "%" : "N/A"}</span>
+          <span class="stat-sub">${allMetrics.rulesFollowedYesCount} / ${allMetrics.rulesRecordedCount} recorded trades followed rules</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">When Rules Followed (n=${followedYesTrades.length})</span>
+          <span class="stat-value ${mYes.recordedNetPnl >= 0 ? "pnl-pos" : "pnl-neg"}">${formatSignedPnl(mYes.recordedNetPnl)}</span>
+          <span class="stat-sub">Win Rate: ${mYes.winRate !== null ? mYes.winRate.toFixed(1) + "%" : "N/A"} (${mYes.completedWins}W / ${mYes.completedLosses}L)</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">When Rules Broken (n=${followedNoTrades.length})</span>
+          <span class="stat-value ${mNo.recordedNetPnl >= 0 ? "pnl-pos" : "pnl-neg"}">${formatSignedPnl(mNo.recordedNetPnl)}</span>
+          <span class="stat-sub">Win Rate: ${mNo.winRate !== null ? mNo.winRate.toFixed(1) + "%" : "N/A"} (${mNo.completedWins}W / ${mNo.completedLosses}L)</span>
+        </div>
+      `;
+
+      // 2. Performance by Setup (with sample size guard)
+      const setupNames = ["V-Pattern", "Wick Fill-up", "Support Rejection", "Breakout", "Pullback", "Other"];
+      const setupTbody = document.getElementById("reviewSetupTbody");
+      setupTbody.innerHTML = "";
+
+      for (const sName of setupNames) {
+        const list = trades.filter(t => t.setup === sName);
+        const m = computeMetrics(list);
+        const completedSample = m.completedWins + m.completedLosses + m.completedDraws;
+        const sampleNote = completedSample === 0
+          ? "No completed trades"
+          : (completedSample < 20
+              ? `Low sample (n=${completedSample} < 20) — inconclusive`
+              : `Sufficient sample (n=${completedSample})`);
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td><strong>${escapeHtml(sName)}</strong></td>
+          <td class="mono">${m.totalTrades} total / ${completedSample} completed</td>
+          <td class="mono">${m.completedWins}W / ${m.completedLosses}L / ${m.completedDraws}D</td>
+          <td class="mono">${m.winRate !== null ? m.winRate.toFixed(1) + "%" : "—"}</td>
+          <td class="mono ${m.recordedNetPnl > 0 ? "pnl-pos" : (m.recordedNetPnl < 0 ? "pnl-neg" : "")}">
+            ${m.totalTrades > 0 ? escapeHtml(formatSignedPnl(m.recordedNetPnl)) : "—"}
+          </td>
+          <td style="font-size:0.8rem; color:var(--ink-secondary);">${escapeHtml(sampleNote)}</td>
+        `;
+        setupTbody.appendChild(tr);
+      }
+
+      // 3. Performance by Asset
+      const assetGroups = new Map();
+      for (const t of trades) {
+        const key = t.asset.trim();
+        if (!assetGroups.has(key)) assetGroups.set(key, []);
+        assetGroups.get(key).push(t);
+      }
+      const assetTbody = document.getElementById("reviewAssetTbody");
+      assetTbody.innerHTML = "";
+      if (assetGroups.size === 0) {
+        assetTbody.innerHTML = `<tr><td colspan="5" style="text-align:center;">No asset trades recorded yet.</td></tr>`;
+      } else {
+        for (const [assetName, list] of assetGroups.entries()) {
+          const m = computeMetrics(list);
+          const completedSample = m.completedWins + m.completedLosses + m.completedDraws;
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td><strong>${escapeHtml(assetName)}</strong></td>
+            <td class="mono">${m.totalTrades} total (n=${completedSample} completed)</td>
+            <td class="mono">${m.completedWins}W / ${m.completedLosses}L</td>
+            <td class="mono">${m.winRate !== null ? m.winRate.toFixed(1) + "%" : "—"}</td>
+            <td class="mono ${m.recordedNetPnl > 0 ? "pnl-pos" : (m.recordedNetPnl < 0 ? "pnl-neg" : "")}">
+              ${escapeHtml(formatSignedPnl(m.recordedNetPnl))}
+            </td>
+          `;
+          assetTbody.appendChild(tr);
+        }
+      }
+
+      // 4. Daily Summaries
+      const dailyTbody = document.getElementById("reviewDailyTbody");
+      dailyTbody.innerHTML = "";
+      if (sessions.length === 0) {
+        dailyTbody.innerHTML = `<tr><td colspan="6" style="text-align:center;">No sessions recorded yet.</td></tr>`;
+      } else {
+        for (const s of sessions) {
+          const sTrades = getTradesForSession(s.id);
+          const m = computeMetrics(sTrades, s.starting_balance);
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td class="mono"><strong>${escapeHtml(s.session_date)}</strong></td>
+            <td class="mono">${m.totalTrades}</td>
+            <td class="mono">${m.winRate !== null ? m.winRate.toFixed(1) + "%" : "—"}</td>
+            <td class="mono ${m.recordedNetPnl > 0 ? "pnl-pos" : (m.recordedNetPnl < 0 ? "pnl-neg" : "")}">${escapeHtml(formatSignedPnl(m.recordedNetPnl))}</td>
+            <td class="mono">${escapeHtml(formatMoney(m.endingBalance))}${m.isBalanceIncomplete ? " *" : ""}</td>
+            <td class="mono">${m.ruleRate !== null ? m.ruleRate.toFixed(0) + "%" : "—"}</td>
+          `;
+          dailyTbody.appendChild(tr);
+        }
+      }
+
+      // 5. Weekly Summaries
+      const weekMap = new Map();
+      const sessionDateById = new Map(sessions.map(s => [s.id, s.session_date]));
+      for (const t of trades) {
+        const sDate = sessionDateById.get(t.session_id);
+        if (!sDate) continue;
+        const wk = getIsoWeekKey(sDate);
+        if (!weekMap.has(wk)) weekMap.set(wk, []);
+        weekMap.get(wk).push(t);
+      }
+      const weeklyTbody = document.getElementById("reviewWeeklyTbody");
+      weeklyTbody.innerHTML = "";
+      if (weekMap.size === 0) {
+        weeklyTbody.innerHTML = `<tr><td colspan="5" style="text-align:center;">No weekly trade data yet.</td></tr>`;
+      } else {
+        const sortedWeeks = Array.from(weekMap.keys()).sort((a, b) => b.localeCompare(a));
+        for (const wk of sortedWeeks) {
+          const m = computeMetrics(weekMap.get(wk));
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td class="mono"><strong>${escapeHtml(wk)}</strong></td>
+            <td class="mono">${m.totalTrades}</td>
+            <td class="mono">${m.winRate !== null ? m.winRate.toFixed(1) + "%" : "—"}</td>
+            <td class="mono ${m.recordedNetPnl > 0 ? "pnl-pos" : (m.recordedNetPnl < 0 ? "pnl-neg" : "")}">${escapeHtml(formatSignedPnl(m.recordedNetPnl))}</td>
+            <td class="mono">${m.ruleRate !== null ? m.ruleRate.toFixed(0) + "%" : "—"}</td>
+          `;
+          weeklyTbody.appendChild(tr);
+        }
+      }
+
+      // 6. Most Common Mistakes
+      const mistakeCounts = new Map();
+      for (const t of trades) {
+        if (t.mistake_made && t.mistake_made.trim()) {
+          const key = t.mistake_made.trim();
+          mistakeCounts.set(key, (mistakeCounts.get(key) || 0) + 1);
+        }
+      }
+      const mistakesContainer = document.getElementById("reviewMistakesContent");
+      if (mistakeCounts.size === 0) {
+        mistakesContainer.innerHTML = `<p class="field-hint">No specific mistakes logged in optional trade fields yet.</p>`;
+      } else {
+        const sortedMistakes = Array.from(mistakeCounts.entries()).sort((a, b) => b[1] - a[1]);
+        mistakesContainer.innerHTML = `
+          <div class="table-responsive">
+            <table class="notebook-table">
+              <thead><tr><th>Recorded Mistake</th><th>Occurrences</th></tr></thead>
+              <tbody>
+                ${sortedMistakes.map(([mText, cnt]) => `
+                  <tr>
+                    <td>${escapeHtml(mText)}</td>
+                    <td class="mono"><strong>${cnt}</strong> trade(s)</td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          </div>
+        `;
+      }
+    }
+
+    /*************************************************************************
+     * 9. BACKUP, CSV EXPORT, JSON EXPORT & VALIDATED JSON IMPORT
+     *************************************************************************/
+    function csvCell(val) {
+      if (val === null || val === undefined) return '""';
+      const str = String(val).replace(/"/g, '""');
+      return `"${str}"`;
+    }
+
+    function exportTradesCsv() {
+      if (trades.length === 0) {
+        showBanner("No trades available to export yet.", "warning");
+        return;
+      }
+      const sessionMap = new Map(sessions.map(s => [s.id, s]));
+      const headers = [
+        "Session Date", "Session Start Balance", "Session Start Time", "Session Status",
+        "T.N.", "Asset", "Setup", "Direction", "Stake Amount", "Result",
+        "Actual Net P&L", "Draw Zero Confirmed", "Reason", "Mindset",
+        "Followed Rules", "Entry Time", "Expiry Duration", "Payout Pct",
+        "Mistake Made", "Chart Notes"
+      ];
+
+      const rows = [headers.map(csvCell).join(",")];
+      for (const t of trades) {
+        const s = sessionMap.get(t.session_id) || {};
+        const row = [
+          s.session_date || "",
+          s.starting_balance ?? "",
+          s.start_time || "",
+          s.status || "",
+          `T${t.trade_seq}`,
+          t.asset,
+          t.setup,
+          t.direction,
+          t.stake_amount,
+          t.result,
+          t.actual_pnl ?? "Not recorded",
+          t.draw_zero_confirmed,
+          t.reason,
+          t.mindset,
+          t.followed_rules === true ? "Yes" : (t.followed_rules === false ? "No" : ""),
+          t.entry_time || "",
+          t.expiry_duration || "",
+          t.payout_pct ?? "",
+          t.mistake_made || "",
+          t.chart_notes || ""
+        ];
+        rows.push(row.map(csvCell).join(","));
+      }
+
+      const blob = new Blob([rows.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `quotex-trading-journal-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showBanner("CSV export downloaded.", "success");
+    }
+
+    function exportJournalJson() {
+      const payload = {
+        schema_version: "1.0",
+        exported_at: new Date().toISOString(),
+        profile: {
+          currency: userProfile.currency,
+          affirmation: userProfile.affirmation
+        },
+        trading_sessions: sessions,
+        trades: trades
+      };
+
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `quotex-journal-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showBanner("Full JSON backup downloaded.", "success");
+    }
+
+    async function handleJsonImport() {
+      const fileInput = document.getElementById("importJsonFile");
+      if (!fileInput.files || fileInput.files.length === 0) {
+        showBanner("Please select a .json backup file first.", "warning");
+        return;
+      }
+
+      const file = fileInput.files[0];
+      if (!file.name.toLowerCase().endsWith(".json")) {
+        showBanner("Invalid file type. Only .json journal backup files are accepted.", "error");
+        return;
+      }
+
+      try {
+        const rawText = await file.text();
+        const parsed = JSON.parse(rawText);
+
+        if (!parsed || !Array.isArray(parsed.trading_sessions) || !Array.isArray(parsed.trades)) {
+          throw new Error("Invalid backup schema: missing trading_sessions or trades arrays.");
+        }
+
+        const confirmImport = window.confirm(
+          `Import ${parsed.trading_sessions.length} session(s) and ${parsed.trades.length} trade(s) into your cloud account?\n\nExisting session dates and trade T.N. sequences will be preserved without duplicates.`
+        );
+        if (!confirmImport) return;
+
+        setSyncStatus("Importing Backup...", "saving");
+        let importedSessions = 0;
+        let importedTrades = 0;
+
+        // Map old session ID -> actual cloud session ID for this user
+        const sessionIdMap = new Map();
+        const existingByDate = new Map(sessions.map(s => [s.session_date, s]));
+
+        for (const rawSess of parsed.trading_sessions) {
+          if (!rawSess.session_date || rawSess.starting_balance === undefined || !rawSess.start_time) {
+            continue;
+          }
+          if (existingByDate.has(rawSess.session_date)) {
+            sessionIdMap.set(rawSess.id, existingByDate.get(rawSess.session_date).id);
+          } else {
+            const { data: newSess, error: sErr } = await supabaseClient
+              .from("trading_sessions")
+              .insert({
+                user_id: currentUser.id,
+                session_date: rawSess.session_date,
+                starting_balance: Number(rawSess.starting_balance),
+                start_time: rawSess.start_time,
+                end_time: rawSess.end_time || null,
+                status: "OPEN", // Insert OPEN first so trades can be inserted cleanly
+                opening_notes: String(rawSess.opening_notes || "").slice(0, 2000),
+                closing_notes: String(rawSess.closing_notes || "").slice(0, 2000)
+              })
+              .select()
+              .single();
+            if (sErr) throw sErr;
+            sessionIdMap.set(rawSess.id, newSess.id);
+            existingByDate.set(newSess.session_date, newSess);
+            importedSessions++;
+          }
+        }
+
+        // Refresh local trades list to check existing (session_id, trade_seq)
+        const { data: currentCloudTrades } = await supabaseClient
+          .from("trades")
+          .select("session_id, trade_seq")
+          .eq("user_id", currentUser.id);
+
+        const existingSeqSet = new Set(
+          (currentCloudTrades || []).map(t => `${t.session_id}:${t.trade_seq}`)
+        );
+
+        for (const rawTr of parsed.trades) {
+          const targetSessionId = sessionIdMap.get(rawTr.session_id);
+          if (!targetSessionId) continue;
+
+          const seq = Number(rawTr.trade_seq);
+          const key = `${targetSessionId}:${seq}`;
+          if (existingSeqSet.has(key)) continue; // Duplicate protection
+
+          const targetSessObj = Array.from(existingByDate.values()).find(s => s.id === targetSessionId);
+          if (targetSessObj && targetSessObj.status === "CLOSED") continue;
+
+          const { error: tErr } = await supabaseClient
+            .from("trades")
+            .insert({
+              session_id: targetSessionId,
+              user_id: currentUser.id,
+              trade_seq: seq,
+              asset: String(rawTr.asset || "UNKNOWN").slice(0, 80),
+              setup: ["V-Pattern", "Wick Fill-up", "Support Rejection", "Breakout", "Pullback", "Other"].includes(rawTr.setup)
+                ? rawTr.setup : "Other",
+              direction: rawTr.direction === "PUT" ? "PUT" : "CALL",
+              stake_amount: Number(rawTr.stake_amount) || 1,
+              result: ["WIN", "LOSS", "DRAW", "PENDING"].includes(rawTr.result) ? rawTr.result : "PENDING",
+              reason: String(rawTr.reason || "Imported").slice(0, 1000),
+              mindset: String(rawTr.mindset || "Calm").slice(0, 120),
+              entry_time: rawTr.entry_time || null,
+              expiry_duration: rawTr.expiry_duration || null,
+              payout_pct: rawTr.payout_pct !== null && rawTr.payout_pct !== undefined ? Number(rawTr.payout_pct) : null,
+              actual_pnl: rawTr.actual_pnl !== null && rawTr.actual_pnl !== undefined ? Number(rawTr.actual_pnl) : null,
+              draw_zero_confirmed: Boolean(rawTr.draw_zero_confirmed),
+              followed_rules: typeof rawTr.followed_rules === "boolean" ? rawTr.followed_rules : null,
+              mistake_made: rawTr.mistake_made || null,
+              chart_notes: rawTr.chart_notes || null
+            });
+
+          if (!tErr) {
+            existingSeqSet.add(key);
+            importedTrades++;
+          }
+        }
+
+        fileInput.value = "";
+        await fetchAllCloudData();
+        showBanner(
+          `Import complete: ${importedSessions} new session(s) and ${importedTrades} new trade(s) added. Duplicates were skipped.`,
+          "success"
+        );
+      } catch (err) {
+        setSyncStatus("Import Error", "error");
+        showBanner("Import failed: " + (err.message || String(err)), "error");
+      }
+    }
+
+    /*************************************************************************
+     * 10. UI HELPERS (BANNERS & SYNC INDICATOR)
+     *************************************************************************/
+    function showBanner(msg, type = "info") {
+      const banner = document.getElementById("globalBanner");
+      const text = document.getElementById("globalBannerText");
+      banner.className = `status-banner ${type}`;
+      text.textContent = msg;
+      banner.classList.remove("hidden");
+    }
+
+    function hideBanner() {
+      document.getElementById("globalBanner").classList.add("hidden");
+    }
+
+    function setSyncStatus(label, stateClass) {
+      const pill = document.getElementById("syncStatusPill");
+      pill.textContent = label;
+      pill.className = `sync-pill ${stateClass || ""}`;
+    }
+
+    // Boot application
+    window.addEventListener("DOMContentLoaded", initApp);
+  </script>
+</body>
+</html>
